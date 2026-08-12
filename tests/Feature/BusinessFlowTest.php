@@ -205,6 +205,7 @@ class BusinessFlowTest extends TestCase
                 'precio_final' => 12000,
                 'cuota_inicial' => 2000,
                 'numero_cuotas' => 3,
+                'fecha_primer_vencimiento' => now()->addMonth()->format('Y-m-d'),
                 'estado' => 'activa',
                 'metodo_pago' => 'efectivo',
             ],

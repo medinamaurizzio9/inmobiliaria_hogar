@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Lote;
 use App\Models\User;
 use App\Models\Venta;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,7 +16,8 @@ class SaleService
         private InstallmentService $installmentService,
         private CashMovementService $cashMovementService,
         private AuditService $auditService,
-        private LotPricingService $pricingService
+        private LotPricingService $pricingService,
+        private CommercialSettingsService $commercialSettings
     ) {}
 
     public function create(array $data, ?User $user): Venta
@@ -30,9 +32,7 @@ class SaleService
             }
 
             $data = $this->applyCommercialPricing($data, $lote, true, $user);
-            $data['saldo_financiar'] = (int) ($data['numero_cuotas'] ?? 0) === 0
-                ? 0
-                : max(0, (float) $data['precio_final'] - (float) ($data['cuota_inicial'] ?? 0));
+            $data = $this->normalizeFinancialTerms($data, $lote);
             $venta = Venta::create([
                 ...$data,
                 'user_id' => $user?->id,
@@ -96,7 +96,7 @@ class SaleService
                 ]);
             }
 
-            $installmentFields = ['precio_final', 'cuota_inicial', 'numero_cuotas', 'fecha_venta'];
+            $installmentFields = ['tipo_operacion', 'precio_final', 'cuota_inicial', 'numero_cuotas', 'fecha_venta', 'fecha_primer_vencimiento'];
             $changesInstallmentStructure = collect($installmentFields)->contains(
                 fn (string $field): bool => (string) $venta->{$field} !== (string) ($data[$field] ?? $venta->{$field})
             );
@@ -106,6 +106,7 @@ class SaleService
             }
 
             $data = $this->applyCommercialPricing($data, $newLot, false, $user);
+            $data = $this->normalizeFinancialTerms($data, $newLot);
             $venta->update(collect($data)->except(['metodo_pago', 'referencia', 'admin_confirma_reserva', 'motivo_cambio'])->all());
             $installmentChanges = $changesInstallmentStructure
                 ? $this->installmentService->resyncForSale($venta->fresh())
@@ -187,7 +188,9 @@ class SaleService
 
             $data['descuento'] = $descuento;
             $data['precio_final'] = $precioFinal;
-            $data['cuota_inicial'] = $initialUsd;
+            $data['cuota_inicial'] = array_key_exists('cuota_inicial', $data)
+                ? (float) $data['cuota_inicial']
+                : $initialUsd;
         } elseif (array_key_exists('descuento', $data)) {
             $data['descuento'] = $descuento;
 
@@ -211,6 +214,50 @@ class SaleService
         $data['precio_final_usd'] = (float) ($data['precio_final'] ?? $operationUsd);
         $data['precio_final_bs'] = $this->pricingService->bs((float) $data['precio_final_usd'], $lote);
         $data['tipo_cambio_usd_bs'] = $payload['tipo_cambio_usd_bs'];
+
+        return $data;
+    }
+
+    private function normalizeFinancialTerms(array $data, Lote $lote): array
+    {
+        $tipo = (string) ($data['tipo_operacion'] ?? 'contado');
+
+        if ($tipo === 'contado') {
+            $data['cuota_inicial'] = 0;
+            $data['numero_cuotas'] = 0;
+            $data['fecha_primer_vencimiento'] = null;
+            $data['saldo_financiar'] = 0;
+
+            return $data;
+        }
+
+        if (! in_array($tipo, ['semicontado', 'credito'], true)) {
+            throw ValidationException::withMessages(['tipo_operacion' => 'La modalidad financiera no es válida.']);
+        }
+
+        $precioCents = Money::toCents($data['precio_final'] ?? 0);
+        $inicialCents = Money::toCents($data['cuota_inicial'] ?? 0);
+        $numeroCuotas = (int) ($data['numero_cuotas'] ?? 0);
+        $urbanizacionId = $lote->manzano?->urbanizacion_id ?? $lote->manzano()->value('urbanizacion_id');
+        $maximo = $tipo === 'semicontado'
+            ? $this->commercialSettings->maxCuotasSemicontado($urbanizacionId)
+            : $this->commercialSettings->maxCuotasCredito($urbanizacionId);
+
+        if ($inicialCents < 0 || $inicialCents > $precioCents) {
+            throw ValidationException::withMessages(['cuota_inicial' => 'La cuota inicial no puede superar el precio final pactado.']);
+        }
+        if ($precioCents - $inicialCents <= 0) {
+            throw ValidationException::withMessages(['cuota_inicial' => 'La modalidad financiada debe dejar un saldo mayor a cero.']);
+        }
+        if ($numeroCuotas < 1 || $numeroCuotas > $maximo) {
+            throw ValidationException::withMessages(['numero_cuotas' => "El plazo debe estar entre 1 y {$maximo} cuotas para {$tipo}."]);
+        }
+        if (empty($data['fecha_primer_vencimiento'])) {
+            throw ValidationException::withMessages(['fecha_primer_vencimiento' => 'La primera fecha de vencimiento es obligatoria para ventas financiadas.']);
+        }
+
+        $data['cuota_inicial'] = Money::fromCents($inicialCents);
+        $data['saldo_financiar'] = Money::fromCents($precioCents - $inicialCents);
 
         return $data;
     }

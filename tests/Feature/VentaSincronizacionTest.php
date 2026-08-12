@@ -112,6 +112,7 @@ class VentaSincronizacionTest extends TestCase
         $this->actingAs($admin)
             ->withSession(['urbanizacion_id' => $venta->lote->manzano->urbanizacion_id])
             ->put(route('ventas.update', $venta), $this->payload($venta, [
+                'tipo_operacion' => 'contado',
                 'precio_final' => 25000,
                 'cuota_inicial' => 0,
                 'numero_cuotas' => 0,
@@ -142,9 +143,11 @@ class VentaSincronizacionTest extends TestCase
                 'lote_id' => $venta->lote_id,
                 'cliente_id' => $venta->cliente_id,
                 'fecha_venta' => $venta->fecha_venta->format('Y-m-d'),
+                'tipo_operacion' => $venta->tipo_operacion ?? ((int) $venta->numero_cuotas > 0 ? 'credito' : 'contado'),
                 'precio_final' => $venta->precio_final,
                 'cuota_inicial' => $venta->cuota_inicial,
                 'numero_cuotas' => $venta->numero_cuotas,
+                'fecha_primer_vencimiento' => $venta->fecha_primer_vencimiento?->format('Y-m-d') ?? now()->addMonth()->format('Y-m-d'),
                 'estado' => $venta->estado,
                 'observaciones' => $venta->observaciones,
                 'metodo_pago' => 'efectivo',

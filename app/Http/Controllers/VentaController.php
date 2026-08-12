@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\Lote;
 use App\Models\Venta;
 use App\Services\SaleService;
+use App\Services\CommercialSettingsService;
 use App\Support\UrbanizacionContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -133,6 +134,8 @@ class VentaController extends Controller
     private function formData(Venta $venta): array
     {
         $venta->loadMissing('cashMovements');
+        $settings = app(CommercialSettingsService::class);
+        $urbanizacionId = UrbanizacionContext::currentId();
 
         return [
             'venta' => $venta,
@@ -146,6 +149,10 @@ class VentaController extends Controller
                 ->where(fn ($query) => $query->whereIn('estado', ['disponible', 'reservado'])->orWhere('id', $venta->lote_id))
                 ->orderBy('codigo')
                 ->get(),
+            'financingLimits' => [
+                'semicontado' => $settings->maxCuotasSemicontado($urbanizacionId),
+                'credito' => $settings->maxCuotasCredito($urbanizacionId),
+            ],
         ];
     }
 

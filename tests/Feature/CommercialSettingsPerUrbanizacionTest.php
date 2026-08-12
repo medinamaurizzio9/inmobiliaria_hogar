@@ -133,6 +133,7 @@ class CommercialSettingsPerUrbanizacionTest extends TestCase
                 'precio_final' => 1,
                 'cuota_inicial' => 1,
                 'numero_cuotas' => 12,
+                'fecha_primer_vencimiento' => now()->addMonth()->toDateString(),
                 'estado' => 'activa',
                 'metodo_pago' => 'efectivo',
             ])
@@ -276,6 +277,8 @@ class CommercialSettingsPerUrbanizacionTest extends TestCase
             'tipo_cambio_usd_bs' => 6.96,
             'incremento_credito_tipo' => 'monto',
             'incremento_credito_valor' => 0,
+            'max_cuotas_semicontado' => 36,
+            'max_cuotas_credito' => 36,
             'inicial_minima_usd' => 0,
             'plazo_12_habilitado' => true,
             'plazo_24_habilitado' => true,

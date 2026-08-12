@@ -9,6 +9,7 @@ use App\Http\Controllers\ConfiguracionUrbanizacionGpsController;
 use App\Http\Controllers\CuotaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\FinancialSettingController;
 use App\Http\Controllers\GrupoComercialController;
 use App\Http\Controllers\LoteCommercialUpdateController;
 use App\Http\Controllers\LoteController;
@@ -131,6 +132,8 @@ Route::middleware('auth')->group(function (): void {
             Route::prefix('administracion')->name('admin.')->group(function (): void {
                 Route::get('/configuracion-comercial', [CommercialSettingController::class, 'edit'])->name('configuracion');
                 Route::put('/configuracion-comercial', [CommercialSettingController::class, 'update'])->name('configuracion.update');
+                Route::get('/configuracion-financiera', [FinancialSettingController::class, 'edit'])->name('configuracion-financiera');
+                Route::put('/configuracion-financiera', [FinancialSettingController::class, 'update'])->name('configuracion-financiera.update');
             });
 
             Route::middleware('can:administrar usuarios')->prefix('administracion')->name('admin.')->group(function (): void {

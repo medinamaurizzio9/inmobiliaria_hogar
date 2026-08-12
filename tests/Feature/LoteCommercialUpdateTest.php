@@ -259,6 +259,7 @@ class LoteCommercialUpdateTest extends TestCase
                 'precio_final' => 1,
                 'cuota_inicial' => 1,
                 'numero_cuotas' => $numeroCuotas,
+                'fecha_primer_vencimiento' => $numeroCuotas > 0 ? now()->addMonth()->toDateString() : null,
                 'estado' => 'activa',
                 'metodo_pago' => 'efectivo',
             ])

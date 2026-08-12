@@ -148,6 +148,7 @@
                         <a @class(['sidebar-link', 'active' => $active('admin.configuracion-general')]) href="{{ route('admin.configuracion-general') }}">Configuracion general</a>
                     @endif
                     <a @class(['sidebar-link', 'active' => $active('admin.configuracion')]) href="{{ route('admin.configuracion') }}">Configuracion comercial</a>
+                    <a @class(['sidebar-link', 'active' => $active('admin.configuracion-financiera')]) href="{{ route('admin.configuracion-financiera') }}">Configuracion financiera</a>
                     <a @class(['sidebar-link', 'active' => $active('admin.urbanizacion-gps.*')]) href="{{ route('admin.urbanizacion-gps.index') }}">Configuracion Urbanizacion GPS</a>
                     @if($isSuperAdmin || $isAdmin)
                         <a @class(['sidebar-link', 'active' => $active('admin.auditoria')]) href="{{ route('admin.auditoria') }}">Auditoria</a>

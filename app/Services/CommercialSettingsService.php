@@ -14,6 +14,8 @@ class CommercialSettingsService
     public const TIPO_CAMBIO_USD_BS = 'tipo_cambio_usd_bs';
     public const INCREMENTO_CREDITO_TIPO = 'incremento_credito_tipo';
     public const INCREMENTO_CREDITO_VALOR = 'incremento_credito_valor';
+    public const MAX_CUOTAS_SEMICONTADO = 'max_cuotas_semicontado';
+    public const MAX_CUOTAS_CREDITO = 'max_cuotas_credito';
     public const INICIAL_MINIMA_USD = 'inicial_minima_usd';
     public const PLAZO_12_HABILITADO = 'plazo_12_habilitado';
     public const PLAZO_24_HABILITADO = 'plazo_24_habilitado';
@@ -57,12 +59,35 @@ class CommercialSettingsService
         return max(0, (float) $this->settings($urbanizacionId)['incremento_credito_valor']);
     }
 
+    public function maxCuotasSemicontado(?int $urbanizacionId = null): int
+    {
+        return max(1, (int) $this->settings($urbanizacionId)['max_cuotas_semicontado']);
+    }
+
+    public function maxCuotasCredito(?int $urbanizacionId = null): int
+    {
+        return max(1, (int) $this->settings($urbanizacionId)['max_cuotas_credito']);
+    }
+
+    public function setFinancingLimits(int $semicontado, int $credito, ?int $urbanizacionId = null): UrbanizacionCommercialSetting
+    {
+        $setting = $this->settingModel($urbanizacionId);
+        $setting->update([
+            'max_cuotas_semicontado' => min(120, max(1, $semicontado)),
+            'max_cuotas_credito' => min(120, max(1, $credito)),
+        ]);
+
+        return $setting;
+    }
+
     public function priceSettings(?int $urbanizacionId = null): array
     {
         return [
             'tipo_cambio_usd_bs' => $this->tipoCambioUsdBs($urbanizacionId),
             'incremento_credito_tipo' => $this->incrementoCreditoTipo($urbanizacionId),
             'incremento_credito_valor' => $this->incrementoCreditoValor($urbanizacionId),
+            'max_cuotas_semicontado' => $this->maxCuotasSemicontado($urbanizacionId),
+            'max_cuotas_credito' => $this->maxCuotasCredito($urbanizacionId),
             ...$this->calculatorSettings($urbanizacionId),
         ];
     }
@@ -76,6 +101,8 @@ class CommercialSettingsService
                 ? $data[self::INCREMENTO_CREDITO_TIPO]
                 : 'monto',
             'incremento_credito_valor' => max(0, (float) $data[self::INCREMENTO_CREDITO_VALOR]),
+            'max_cuotas_semicontado' => max(1, (int) ($data[self::MAX_CUOTAS_SEMICONTADO] ?? $setting->max_cuotas_semicontado ?? 36)),
+            'max_cuotas_credito' => max(1, (int) ($data[self::MAX_CUOTAS_CREDITO] ?? $setting->max_cuotas_credito ?? 36)),
         ]);
 
         return $setting;
@@ -89,6 +116,8 @@ class CommercialSettingsService
             'tipo_cambio_usd_bs' => max(0, (float) $data[self::TIPO_CAMBIO_USD_BS]),
             'incremento_credito_tipo' => $data[self::INCREMENTO_CREDITO_TIPO],
             'incremento_credito_valor' => max(0, (float) $data[self::INCREMENTO_CREDITO_VALOR]),
+            'max_cuotas_semicontado' => max(1, (int) ($data[self::MAX_CUOTAS_SEMICONTADO] ?? $setting->max_cuotas_semicontado ?? 36)),
+            'max_cuotas_credito' => max(1, (int) ($data[self::MAX_CUOTAS_CREDITO] ?? $setting->max_cuotas_credito ?? 36)),
             'inicial_minima_usd' => max(0, (float) ($data[self::INICIAL_MINIMA_USD] ?? $setting->inicial_minima_usd ?? 0)),
             'plazo_12_habilitado' => (bool) ($data[self::PLAZO_12_HABILITADO] ?? $setting->plazo_12_habilitado ?? true),
             'plazo_24_habilitado' => (bool) ($data[self::PLAZO_24_HABILITADO] ?? $setting->plazo_24_habilitado ?? true),
@@ -183,6 +212,8 @@ class CommercialSettingsService
             'tipo_cambio_usd_bs' => max(0, (float) $setting->tipo_cambio_usd_bs),
             'incremento_credito_tipo' => in_array($setting->incremento_credito_tipo, ['monto', 'porcentaje'], true) ? $setting->incremento_credito_tipo : 'monto',
             'incremento_credito_valor' => max(0, (float) $setting->incremento_credito_valor),
+            'max_cuotas_semicontado' => max(1, (int) ($setting->max_cuotas_semicontado ?? 36)),
+            'max_cuotas_credito' => max(1, (int) ($setting->max_cuotas_credito ?? 36)),
             'inicial_minima_usd' => max(0, (float) ($setting->inicial_minima_usd ?? 0)),
             'plazo_12_habilitado' => (bool) ($setting->plazo_12_habilitado ?? true),
             'plazo_24_habilitado' => (bool) ($setting->plazo_24_habilitado ?? true),
@@ -219,6 +250,8 @@ class CommercialSettingsService
             'tipo_cambio_usd_bs' => max(0, (float) ($global[self::TIPO_CAMBIO_USD_BS] ?? 6.96)),
             'incremento_credito_tipo' => in_array($tipo, ['monto', 'porcentaje'], true) ? $tipo : 'monto',
             'incremento_credito_valor' => max(0, (float) ($global[self::INCREMENTO_CREDITO_VALOR] ?? 0)),
+            'max_cuotas_semicontado' => 36,
+            'max_cuotas_credito' => 36,
             'inicial_minima_usd' => 0,
             'plazo_12_habilitado' => true,
             'plazo_24_habilitado' => true,

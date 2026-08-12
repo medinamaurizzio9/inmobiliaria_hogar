@@ -102,6 +102,7 @@ class CommercialPricingTest extends TestCase
                 'precio_final' => 1,
                 'cuota_inicial' => 1,
                 'numero_cuotas' => 12,
+                'fecha_primer_vencimiento' => now()->addMonth()->toDateString(),
                 'estado' => 'activa',
                 'metodo_pago' => 'efectivo',
             ])
@@ -115,7 +116,7 @@ class CommercialPricingTest extends TestCase
             'precio_final' => 22000,
             'precio_final_usd' => 22000,
             'precio_final_bs' => 153120,
-            'cuota_inicial' => 4400,
+            'cuota_inicial' => 1,
             'tipo_cambio_usd_bs' => 6.96,
         ]);
     }

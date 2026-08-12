@@ -27,6 +27,7 @@
     <p><strong>Cuota inicial:</strong> $us {{ number_format((float) $venta->cuota_inicial, 2) }}</p>
     <p><strong>Saldo financiado:</strong> $us {{ number_format((float) $venta->saldo_financiar, 2) }}</p>
     <p><strong>Numero de cuotas:</strong> {{ (int) $venta->numero_cuotas }}</p>
+    <p><strong>Cuota mensual:</strong> $us {{ number_format((float) ($venta->cuotas->sortBy('numero')->first()?->monto ?? 0), 2) }}</p>
     <p><strong>Primer vencimiento:</strong> {{ $venta->fecha_primer_vencimiento?->format('d/m/Y') ?: 'Sin definir' }}</p>
     @if ((float) $venta->descuento > 0)
         <p><strong>Descuento autorizado por:</strong> {{ $venta->descuentoAutorizador?->name ?? 'Usuario no disponible' }}</p>
