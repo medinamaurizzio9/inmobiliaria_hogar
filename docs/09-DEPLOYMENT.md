@@ -1,5 +1,40 @@
 # DEPLOYMENT.md
 
+## Checklist específico — Hogar Inmobiliaria
+
+Requisitos confirmados para esta implementación:
+
+- PHP 8.3 o versión compatible con `composer.lock`, con PDO MySQL, Mbstring,
+  XML, Ctype, JSON, Fileinfo, OpenSSL y GD; Composer instalado.
+- Node.js solo es necesario para construir assets cuando cambie el frontend:
+  `npm ci && npm run build`.
+- Crear `.env` desde `.env.example`: `APP_ENV=production`, `APP_DEBUG=false`,
+  `APP_URL=https://dominio`, credenciales MySQL limitadas, drivers de sesión,
+  cache y cola definidos. Con HTTPS usar `SESSION_SECURE_COOKIE=true`.
+- No ejecutar `DatabaseSeeder` en producción: contiene usuarios y datos demo
+  conocidos. Crear usuarios reales mediante un procedimiento administrativo
+  seguro; usar seeders de permisos individualmente solo tras revisarlos.
+- Antes de migrar: backup verificado y `php artisan migrate:status`; después,
+  `php artisan migrate --force`. Nunca `migrate:fresh` ni `db:wipe`.
+- Ejecutar `php artisan storage:link` para logos y QR institucionales públicos.
+  `storage/` y `bootstrap/cache/` deben ser escribibles por el usuario web, sin
+  usar permisos globales `777`.
+- Secuencia de caches validada: `php artisan optimize:clear`, `config:cache`,
+  `route:cache` y `view:cache`. En desarrollo limpiar después con
+  `route:clear`, `config:clear` y `view:clear`.
+- No hay jobs programados ni workers específicos obligatorios actualmente.
+  No desplegar Supervisor/cron por suposición; configurarlos si se activa cola
+  o scheduler en una fase posterior.
+- El backup manual `php artisan impacto:backup` escribe en
+  `storage/app/backups`, fuera de `public`; los dumps SQL están ignorados por
+  Git. Definir copia externa, retención y prueba periódica de restauración.
+- Detrás de proxy inverso verificar detección HTTPS antes de ajustar proxies
+  confiables. No confiar indiscriminadamente en todos los proxies.
+- Smoke test posterior: login y cambio obligatorio; dashboard; clientes;
+  ventas; `/cobranza`; caja; `/reportes/gerencia`; configuración financiera en
+  lectura/escritura según rol; portal cliente, PDF y recibos propios.
+- Completar `clients/hogar-inmobiliaria/ACCEPTANCE_CHECKLIST.md` en staging.
+
 # DESPLIEGUE BASE — PLATAFORMA TERRENOS
 
 ## 1. OBJETIVO

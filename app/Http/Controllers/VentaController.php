@@ -17,6 +17,7 @@ class VentaController extends Controller
 {
     public function index(Request $request): View
     {
+        abort_if($request->user()->hasAnyRole(['vendedor', 'supervisor']), 403, 'No tienes acceso a informacion financiera de ventas.');
         $perPage = $this->perPage($request);
         $search = trim((string) $request->query('q', ''));
         $estado = (string) $request->query('estado', '');
@@ -56,8 +57,9 @@ class VentaController extends Controller
         ]);
     }
 
-    public function show(Venta $venta): View
+    public function show(Request $request, Venta $venta): View
     {
+        abort_if($request->user()->hasAnyRole(['vendedor', 'supervisor']), 403, 'No tienes acceso a informacion financiera de ventas.');
         abort_unless(UrbanizacionContext::ventaBelongsToCurrent($venta), 403, 'No tienes acceso a esta urbanizacion');
 
         $venta->load('cliente', 'lote.manzano.urbanizacion', 'cuotas.pagoAplicaciones', 'cashMovements', 'descuentoAutorizador', 'reestructuraciones.administrador', 'devoluciones.responsable', 'devoluciones.cashMovements');

@@ -25,8 +25,7 @@ class VentaEdicionAuditoriaTest extends TestCase
         $this->actingAs($vendedor)
             ->withSession(['urbanizacion_id' => $urbanizacion->id])
             ->get(route('ventas.index'))
-            ->assertOk()
-            ->assertDontSee('>Editar</a>', false);
+            ->assertForbidden();
 
         $this->actingAs($vendedor)
             ->withSession(['urbanizacion_id' => $urbanizacion->id])

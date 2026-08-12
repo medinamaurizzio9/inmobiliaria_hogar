@@ -43,6 +43,45 @@ class StabilityAuditTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_roles_comerciales_no_acceden_directamente_a_deuda_ventas_o_documentos_financieros(): void
+    {
+        $this->seed();
+
+        $venta = Venta::whereHas('cuotas')->firstOrFail();
+
+        foreach (['vendedor@impacto.test', 'supervisor@impacto.test'] as $email) {
+            $usuario = User::where('email', $email)->firstOrFail();
+            $session = ['urbanizacion_id' => $usuario->urbanizacionesAsignadas()->firstOrFail()->id];
+
+            foreach ([
+                route('ventas.index'),
+                route('ventas.show', $venta),
+                route('pdf.plan', $venta),
+                route('pdf.contrato', $venta),
+            ] as $url) {
+                $this->actingAs($usuario)->withSession($session)->get($url)->assertForbidden();
+            }
+        }
+    }
+
+    public function test_cajero_ve_acciones_de_verificacion_que_backend_le_permite(): void
+    {
+        $this->seed();
+
+        $cajero = User::where('email', 'cajero@impacto.test')->firstOrFail();
+        $movimiento = CashMovement::whereNotNull('sale_id')->firstOrFail();
+        $movimiento->forceFill(['estado' => 'pendiente_verificacion'])->save();
+        $urbanizacionId = $movimiento->venta?->lote->manzano->urbanizacion_id
+            ?? $movimiento->cuota?->venta->lote->manzano->urbanizacion_id;
+
+        $this->actingAs($cajero)
+            ->withSession(['urbanizacion_id' => $urbanizacionId])
+            ->get(route('caja.show', $movimiento))
+            ->assertOk()
+            ->assertSee('Confirmar pago')
+            ->assertSee('Rechazar pago');
+    }
+
     public function test_vendedor_no_puede_editar_cuota_pagada(): void
     {
         $this->seed();

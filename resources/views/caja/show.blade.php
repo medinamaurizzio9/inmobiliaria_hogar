@@ -127,7 +127,7 @@
     </div>
 @endif
 
-@if ($movimiento->estado === 'pendiente_verificacion' && auth()->user()?->hasAnyRole(['administrador', 'gerente']))
+@if ($movimiento->estado === 'pendiente_verificacion' && auth()->user()?->hasAnyRole(['administrador', 'gerente', 'cajero']))
     <div class="filter-actions">
         <form method="POST" action="{{ route('caja.confirm', $movimiento) }}" onsubmit="return confirm('Confirma que deseas verificar y confirmar este pago?')">
             @csrf

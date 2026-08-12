@@ -137,6 +137,7 @@ class PdfController extends Controller
 
     public function paymentPlan(Request $request, Venta $venta, SystemSettingsService $settings)
     {
+        abort_if($request->user()->hasAnyRole(['vendedor', 'supervisor']), 403, 'No tienes acceso al plan financiero de esta venta.');
         $this->authorizeClientOrPermission($request, $venta->cliente_id, 'ver ventas');
         if (! $request->user()->hasRole('cliente')) {
             abort_unless(UrbanizacionContext::ventaBelongsToCurrent($venta), 403, 'No tienes acceso a esta urbanizacion');
@@ -148,6 +149,7 @@ class PdfController extends Controller
 
     public function contract(Request $request, Venta $venta, SystemSettingsService $settings)
     {
+        abort_if($request->user()->hasAnyRole(['vendedor', 'supervisor']), 403, 'No tienes acceso al contrato de esta venta.');
         $this->authorizeClientOrPermission($request, $venta->cliente_id, 'ver ventas');
         if (! $request->user()->hasRole('cliente')) {
             abort_unless(UrbanizacionContext::ventaBelongsToCurrent($venta), 403, 'No tienes acceso a esta urbanizacion');
@@ -159,6 +161,7 @@ class PdfController extends Controller
 
     public function saleAccountStatement(Request $request, Venta $venta, SystemSettingsService $settings)
     {
+        abort_if($request->user()->hasAnyRole(['vendedor', 'supervisor']), 403, 'No tienes acceso al estado de cuenta de esta venta.');
         $this->authorizeClientOrPermission($request, $venta->cliente_id, 'ver ventas');
         $venta->load('cliente', 'lote.manzano.urbanizacion', 'cuotas.pagoAplicaciones.cashMovement', 'cashMovements');
 
