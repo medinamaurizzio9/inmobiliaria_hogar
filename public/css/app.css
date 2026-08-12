@@ -1238,3 +1238,11 @@ label {
     body { background: #fff; color: #111; }
     .card, .table { box-shadow: none; break-inside: avoid; }
 }
+/* Portal financiero: lectura y acciones prioritarias en celular. */
+.portal-lots { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.portal-lots .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 640px) {
+    .portal-stats, .portal-lots { grid-template-columns: 1fr; }
+    .portal-lots .btn { width: 100%; text-align: center; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

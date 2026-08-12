@@ -157,6 +157,19 @@ class PdfController extends Controller
             ->stream('contrato-'.$venta->id.'.pdf');
     }
 
+    public function saleAccountStatement(Request $request, Venta $venta, SystemSettingsService $settings)
+    {
+        $this->authorizeClientOrPermission($request, $venta->cliente_id, 'ver ventas');
+        $venta->load('cliente', 'lote.manzano.urbanizacion', 'cuotas.pagoAplicaciones.cashMovement', 'cashMovements');
+
+        return Pdf::loadView('pdf.venta-estado-cuenta', [
+            'venta' => $venta,
+            'settings' => $settings->all(),
+            'totalPagado' => $venta->cashMovements->where('tipo', 'ingreso')->where('estado', 'confirmado')->sum('monto'),
+            'saldo' => $venta->cuotas->whereIn('estado', ['pendiente', 'parcial', 'vencida'])->sum('saldo_pendiente'),
+        ])->stream('estado-cuenta-terreno-'.$venta->id.'.pdf');
+    }
+
     private function authorizeClientOrPermission(Request $request, ?int $clienteId, string $permission): void
     {
         $user = $request->user();

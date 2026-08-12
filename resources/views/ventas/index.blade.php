@@ -1,6 +1,15 @@
 @extends('layouts.app')
 
 @section('content')
+@if(session('client_temporary_credential'))
+<div class="card" style="border:2px solid #d97706;margin-bottom:18px;">
+    <h2>Acceso temporal del cliente — visible una sola vez</h2>
+    <p>Correo: <strong>{{ session('client_temporary_credential.email') }}</strong></p>
+    <p>Contraseña temporal: <strong>{{ session('client_temporary_credential.password') }}</strong></p>
+    <p class="muted">Comunícala de forma segura. No quedará almacenada ni volverá a mostrarse.</p>
+</div>
+@endif
+@if(session('warning'))<div class="status" style="background:#fff7ed;color:#9a3412;">{{ session('warning') }}</div>@endif
 <div class="topbar">
     <h1 class="title">Ventas</h1>
     <div class="actions">

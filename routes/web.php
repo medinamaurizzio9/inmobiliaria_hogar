@@ -53,7 +53,17 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/cambiar-password', [PasswordChangeController::class, 'update'])->name('password.change.update');
 
     Route::middleware('password.changed')->group(function (): void {
-        Route::get('/mi-cuenta', MiCuentaController::class)->middleware('role:cliente')->name('clientes.mi-cuenta');
+        Route::middleware('role:cliente')->prefix('mi-cuenta')->group(function (): void {
+            Route::get('/', [MiCuentaController::class, 'index'])->name('clientes.mi-cuenta');
+            Route::get('/terrenos/{venta}', [MiCuentaController::class, 'show'])->name('portal.terrenos.show');
+            Route::get('/terrenos/{venta}/pagar', [MiCuentaController::class, 'pay'])->name('portal.pagar');
+            Route::post('/terrenos/{venta}/pagar', [MiCuentaController::class, 'storePayment'])->name('portal.pagar.store');
+            Route::get('/terrenos/{venta}/documentos', [MiCuentaController::class, 'documents'])->name('portal.documentos');
+            Route::get('/terrenos/{venta}/estado-cuenta.pdf', [PdfController::class, 'saleAccountStatement'])->name('portal.estado-cuenta.pdf');
+            Route::get('/terrenos/{venta}/plan.pdf', [PdfController::class, 'paymentPlan'])->name('portal.plan');
+            Route::get('/terrenos/{venta}/contrato.pdf', [PdfController::class, 'contract'])->name('portal.contrato');
+            Route::get('/recibos/{cashMovement}.pdf', [PdfController::class, 'receipt'])->name('portal.recibo');
+        });
         Route::get('/clientes/{cliente}/pdf', [PdfController::class, 'clientProfile'])->name('clientes.pdf');
         Route::get('/clientes/{cliente}/estado-cuenta/pdf', [PdfController::class, 'clientAccountStatement'])->name('clientes.estado-cuenta.pdf');
         Route::get('/clientes/{cliente}/reservas/pdf', [PdfController::class, 'clientReservations'])->name('clientes.reservas.pdf');

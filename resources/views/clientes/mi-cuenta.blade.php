@@ -1,34 +1,15 @@
 @extends('layouts.app')
 @section('content')
-<div class="topbar"><h1 class="title">Mi cuenta</h1></div>
-<div class="card">
-    <h2>{{ $cliente->nombre }}</h2>
-    <p class="muted">{{ $cliente->documento }} · {{ $cliente->telefono }} · {{ $cliente->email }}</p>
-</div>
-<div class="card" style="margin-top:18px;">
-    <h2>Mis lotes y plan de pagos</h2>
-    <table class="table">
-        <thead><tr><th>Lote</th><th>Precio</th><th>Anticipo</th><th>Saldo</th><th>Estado</th><th>PDF</th></tr></thead>
-        <tbody>
-        @foreach($cliente->ventas as $venta)
-            <tr>
-                <td>{{ $venta->lote->manzano->urbanizacion->nombre }} / {{ $venta->lote->manzano->codigo }}-{{ $venta->lote->codigo }}</td>
-                <td>{{ number_format($venta->precio_final, 2) }}</td>
-                <td>{{ number_format($venta->cuota_inicial, 2) }}</td>
-                <td>{{ number_format($venta->cuotas->sum('saldo_pendiente'), 2) }}</td>
-                <td><span class="badge {{ $venta->estado }}">{{ $venta->estado }}</span></td>
-                <td><a class="btn secondary" href="{{ route('pdf.plan', $venta) }}">Plan de pagos</a></td>
-            </tr>
-        @endforeach
-        </tbody>
-    </table>
-</div>
-<div class="card" style="margin-top:18px;">
-    <h2>Mis reservas</h2>
-    <table class="table"><tbody>@foreach($cliente->reservas as $reserva)<tr><td>{{ $reserva->lote->manzano->codigo }}-{{ $reserva->lote->codigo }}</td><td>{{ $reserva->fecha_vencimiento->format('d/m/Y') }}</td><td><span class="badge {{ $reserva->estado }}">{{ $reserva->estado }}</span></td></tr>@endforeach</tbody></table>
-</div>
-<div class="card" style="margin-top:18px;">
-    <h2>Mis pagos</h2>
-    <table class="table"><tbody>@foreach($cliente->cashMovements as $movimiento)<tr><td>{{ $movimiento->fecha->format('d/m/Y') }}</td><td>{{ $movimiento->concepto }}</td><td>{{ number_format($movimiento->monto, 2) }}</td><td>{{ $movimiento->estado }}</td></tr>@endforeach</tbody></table>
-</div>
+@php
+$ventas=$cliente->ventas; $saldoTotal=$ventas->sum(fn($v)=>$v->cuotas->whereIn('estado',['pendiente','parcial','vencida'])->sum('saldo_pendiente'));
+$pendientes=$cliente->cashMovements->where('estado','pendiente_verificacion')->count();
+@endphp
+<div class="topbar" id="perfil"><h1 class="title">Hola, {{ $cliente->nombre }}</h1></div>
+<div class="grid stats portal-stats"><div class="card"><div class="muted">Mis terrenos</div><div class="stat-value">{{ $ventas->count() }}</div></div><div class="card"><div class="muted">Saldo total informativo</div><div class="stat-value">$us {{ number_format((float)$saldoTotal,2) }}</div></div><div class="card"><div class="muted">Pagos por verificar</div><div class="stat-value">{{ $pendientes }}</div></div></div>
+@foreach($alertas->where('indicador','vencida') as $alerta)<div class="card" style="margin-top:14px;border:2px solid #dc2626"><strong>TIENES CUOTAS VENCIDAS</strong><p>$us {{ number_format($alerta['saldo'],2) }} — {{ $alerta['cuota']->venta->lote->manzano->urbanizacion->nombre }} / Mz {{ $alerta['cuota']->venta->lote->manzano->codigo }} / Lote {{ $alerta['cuota']->venta->lote->codigo }} — venció {{ \Carbon\Carbon::parse($alerta['fecha'])->format('d/m/Y') }}</p><a class="btn" href="{{ route('portal.pagar',$alerta['cuota']->venta) }}">Pagar</a></div>@endforeach
+@foreach($alertas->where('indicador','proxima_vencer') as $alerta)<div class="card" style="margin-top:14px;border:2px solid #d97706"><strong>Próximo pago</strong><p>$us {{ number_format($alerta['saldo'],2) }} — {{ $alerta['cuota']->venta->lote->manzano->urbanizacion->nombre }} / Mz {{ $alerta['cuota']->venta->lote->manzano->codigo }} / Lote {{ $alerta['cuota']->venta->lote->codigo }} — vence {{ \Carbon\Carbon::parse($alerta['fecha'])->format('d/m/Y') }}, faltan {{ $alerta['dias'] }} días</p><a class="btn" href="{{ route('portal.pagar',$alerta['cuota']->venta) }}">Pagar</a></div>@endforeach
+<h2 id="mis-terrenos" style="margin-top:22px">Mis terrenos</h2><div class="grid portal-lots">
+@forelse($ventas as $venta)@php $activas=$venta->cuotas->whereIn('estado',['pendiente','parcial','vencida'])->where('saldo_pendiente','>',0); $saldo=$activas->sum('saldo_pendiente'); $pagado=$venta->cashMovements->where('tipo','ingreso')->where('estado','confirmado')->sum('monto'); $proxima=$activas->sortBy('fecha_vencimiento')->first(); @endphp
+<article class="card"><h2>{{ $venta->lote->manzano->urbanizacion->nombre }}</h2><p>Mz {{ $venta->lote->manzano->codigo }} · Lote {{ $venta->lote->codigo }}</p><p><strong>{{ strtoupper($venta->tipo_operacion) }}</strong></p><p>Precio: $us {{ number_format((float)$venta->precio_final,2) }} · Inicial: $us {{ number_format((float)$venta->cuota_inicial,2) }}</p><p>Pagado: $us {{ number_format((float)$pagado,2) }}</p><p class="stat-value">{{ $saldo>0?'Saldo $us '.number_format((float)$saldo,2):'PAGADO' }}</p>@if($proxima)<p>Próxima: cuota {{ $proxima->numero }}, {{ $proxima->fecha_vencimiento?->format('d/m/Y') }}</p>@endif<div class="actions"><a class="btn" href="{{ route('portal.terrenos.show',$venta) }}">Ver detalle</a><a class="btn secondary" href="{{ route('portal.estado-cuenta.pdf',$venta) }}">Estado de cuenta</a>@if($saldo>0)<a class="btn" href="{{ route('portal.pagar',$venta) }}">Pagar</a>@endif<a class="btn secondary" href="{{ route('portal.documentos',$venta) }}">Documentos</a></div></article>
+@empty<div class="card">No tienes terrenos asociados.</div>@endforelse</div>
 @endsection

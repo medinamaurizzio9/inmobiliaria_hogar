@@ -44,7 +44,11 @@
                 <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>+</span> Inicio</button>
                 <div class="sidebar-submenu">
                     @if($isCliente)
-                        <a @class(['sidebar-link', 'active' => $active('clientes.mi-cuenta')]) href="{{ route('clientes.mi-cuenta') }}">Mi cuenta</a>
+                        <a @class(['sidebar-link', 'active' => $active('clientes.mi-cuenta')]) href="{{ route('clientes.mi-cuenta') }}">Inicio</a>
+                        <a class="sidebar-link" href="{{ route('clientes.mi-cuenta') }}#mis-terrenos">Mis terrenos</a>
+                        <a class="sidebar-link" href="{{ route('clientes.mi-cuenta') }}#pagos">Pagos</a>
+                        <a class="sidebar-link" href="{{ route('clientes.mi-cuenta') }}#mis-terrenos">Documentos</a>
+                        <a class="sidebar-link" href="{{ route('clientes.mi-cuenta') }}#perfil">Mi perfil</a>
                     @else
                         @can('ver dashboard')<a @class(['sidebar-link', 'active' => $active('dashboard')]) href="{{ route('dashboard') }}">Dashboard</a>@endcan
                         <a @class(['sidebar-link', 'active' => $active('urbanizaciones.select')]) href="{{ route('urbanizaciones.select') }}">Seleccionar urbanizacion</a>

@@ -17,7 +17,8 @@ class SaleService
         private CashMovementService $cashMovementService,
         private AuditService $auditService,
         private LotPricingService $pricingService,
-        private CommercialSettingsService $commercialSettings
+        private CommercialSettingsService $commercialSettings,
+        private ClientAccountProvisioner $clientAccountProvisioner
     ) {}
 
     public function create(array $data, ?User $user): Venta
@@ -52,6 +53,9 @@ class SaleService
                 $this->cashMovementService->ingresoVenta($venta, (float) $venta->cuota_inicial, 'anticipo', $data['metodo_pago'] ?? 'efectivo', $user, $data['referencia'] ?? null);
                 $this->installmentService->generateForSale($venta);
             }
+
+            $access = $this->clientAccountProvisioner->provision($venta->cliente);
+            $venta->setAttribute('client_access_result', $access);
 
             return $venta;
         });

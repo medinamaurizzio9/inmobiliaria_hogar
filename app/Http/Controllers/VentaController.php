@@ -93,7 +93,17 @@ class VentaController extends Controller
         abort_unless(UrbanizacionContext::loteBelongsToCurrent($lote), 403, 'No tienes acceso a esta urbanizacion');
         abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
 
-        $saleService->create($request->validated(), $request->user());
+        $venta = $saleService->create($request->validated(), $request->user());
+
+        $access = $venta->getAttribute('client_access_result');
+        if (($access['created'] ?? false) === true) {
+            session()->flash('client_temporary_credential', [
+                'email' => $access['user']->email,
+                'password' => $access['temporary_password'],
+            ]);
+        } elseif (! empty($access['warning'])) {
+            session()->flash('warning', $access['warning']);
+        }
 
         return redirect()->route('ventas.index')->with('status', 'Operacion realizada correctamente.');
     }

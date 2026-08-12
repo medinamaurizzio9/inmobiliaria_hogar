@@ -121,7 +121,8 @@ Esta sección es la principal referencia para continuar el desarrollo.
 
 Título:
 
-Fase 3 — Creación automática de cuenta cliente y Portal Financiero.
+Fase 4 — Cobranza / Caja Rápida: buscador único, cobro mediante modal,
+previsualización, confirmación y recibo inmediato.
 
 Prioridad:
 
@@ -133,23 +134,21 @@ Estado:
 
 Objetivo:
 
-Crear automáticamente la cuenta vinculada al cliente y habilitar el Portal
-Financiero con acceso seguro a su estado de cuenta, cuotas y pagos.
+Optimizar la cobranza interna con búsqueda única, previsualización de deuda por
+terreno, confirmación segura y emisión inmediata del recibo.
 
 Archivos probablemente involucrados:
 
-- `app/Services/InstallmentService.php`
+- `app/Http/Controllers/CashMovementController.php`
 - `app/Services/CashMovementService.php`
-- `app/Models/Venta.php`
-- `app/Models/Cuota.php`
-- controlador/request/vista administrativa por definir tras revisar el flujo existente.
+- `app/Services/PaymentAllocationService.php`
+- `resources/views/caja/`
 
 Documentación requerida:
 
 - `/AGENTS.md`
 - `./MODULES.md`
-- `./BUSINESS_OVERRIDES.md` (reglas F-33, F-34 y F-35)
-- `/docs/05-DATABASE_BASE.md`
+- `./BUSINESS_OVERRIDES.md` (reglas F-9, F-10, F-20, F-22 y F-23)
 - `/docs/06-ARCHITECTURE.md`
 
 Agregar únicamente los documentos CORE necesarios.
@@ -160,10 +159,10 @@ Agregar únicamente los documentos CORE necesarios.
 
 La tarea estará terminada cuando:
 
-- [ ] cuenta cliente creada y vinculada sin duplicados;
-- [ ] acceso aislado a la información financiera propia;
-- [ ] cuotas, pagos y saldo visibles;
-- [ ] autorización backend verificada;
+- [ ] buscador único identifica cliente/terreno/cuota;
+- [ ] previsualización no modifica saldos;
+- [ ] confirmación reutiliza el motor financiero;
+- [ ] recibo inmediato disponible;
 - [ ] pruebas correspondientes pasan.
 
 ---
@@ -174,7 +173,7 @@ La tarea estará terminada cuando:
 
 Título:
 
-Fase 2.2 — Reestructuración administrativa y devoluciones/rescisiones.
+Fase 3 — Cuenta automática de cliente y Portal Financiero.
 
 Fecha:
 
@@ -184,48 +183,46 @@ Resultado:
 
 Implementado y verificado con tests:
 
-- Reestructuración exclusiva de administrador para crédito y semicontado con
-  saldo real, snapshots antes/después, motivo, responsable y nuevo vencimiento.
-- Cuotas pagadas y aplicaciones históricas intactas; cuotas activas anteriores
-  anuladas sin borrado y pagos parciales preservados.
-- Nuevo plan exacto con `Money`, sin intereses ni cambios al precio/descuento;
-  la última cuota absorbe el residuo.
-- Rescisión transaccional exclusiva de administrador con bloqueo de venta/lote,
-  preservación de pagos, aplicaciones y cuotas, y cancelación de deuda activa.
-- Registro de total pagado confirmado, monto devuelto y monto retenido. Solo el
-  monto devuelto genera egreso de caja con concepto `devolucion`.
-- Venta anulada y lote sincronizado con operaciones vigentes.
-- Historial visible, métricas de devolución/retención y auditoría de ambas acciones.
+- Al cerrar una venta se crea un único `User` vinculado al cliente cuando existe
+  correo válido; se asigna rol cliente y cambio obligatorio de contraseña.
+- Contraseña temporal criptográficamente aleatoria, almacenada solo como hash y
+  mostrada una vez al usuario interno mediante sesión flash.
+- Venta preservada con advertencia administrativa cuando falta correo válido.
+- Portal móvil por terreno con saldos independientes, cuotas, pagos, alertas,
+  documentos y estados financieros.
+- Solicitudes QR/transferencia reutilizan `CashMovementService`, quedan pendientes
+  y no modifican cuotas ni crean aplicaciones hasta su confirmación.
+- Estado de cuenta PDF por terreno, contratos, planes y recibos confirmados.
+- Ownership backend por `auth()->user()->cliente_id` para todos los recursos.
 
 Nota: sin commit ni push, en rama `hogar-inmobiliaria`.
 
 Archivos principales modificados:
 
-- `app/Services/DebtRestructuringService.php`
-- `app/Services/SaleRescissionService.php`
-- `app/Http/Controllers/ReestructuracionController.php`
-- `app/Http/Controllers/DevolucionController.php`
-- `app/Models/Reestructuracion.php`
-- `app/Models/Devolucion.php`
-- `resources/views/ventas/reestructurar.blade.php`
-- `resources/views/ventas/rescindir.blade.php`
-- `resources/views/ventas/show.blade.php`
+- `app/Services/ClientAccountProvisioner.php`
+- `app/Services/SaleService.php`
+- `app/Http/Controllers/MiCuentaController.php`
+- `app/Http/Controllers/PdfController.php`
+- `resources/views/clientes/mi-cuenta.blade.php`
+- `resources/views/clientes/terreno.blade.php`
+- `resources/views/clientes/pagar.blade.php`
+- `resources/views/clientes/documentos.blade.php`
+- `resources/views/pdf/venta-estado-cuenta.blade.php`
 - `routes/web.php`
-- `tests/Feature/FinancialRestructuringAndRefundTest.php`
+- `tests/Feature/ClientPortalTest.php`
 
 Migraciones:
 
-- `2026_08_12_000002_create_reestructuraciones_and_devoluciones_tables.php`,
-  aplicada correctamente en MySQL `hogar_inmobiliaria`.
+- Ninguna. Se reutilizaron `users.cliente_id`, `must_change_password`, ventas,
+  cuotas, `cash_movements` y `pago_aplicaciones` existentes.
 
 Pruebas ejecutadas:
 
 ```bash
-php artisan test tests/Feature/FinancialRestructuringAndRefundTest.php
-# 10 passed, 42 assertions
+php artisan test tests/Feature/ClientPortalTest.php
+# 12 passed, 55 assertions
 php artisan test
-# 461 passed, 1733 assertions
+# 473 passed, 1788 assertions
 ```
 
-Pendiente (siguiente tarea): Fase 3 — Creación automática de cuenta cliente y
-Portal Financiero.
+Pendiente (siguiente tarea): Fase 4 — Cobranza / Caja Rápida.
