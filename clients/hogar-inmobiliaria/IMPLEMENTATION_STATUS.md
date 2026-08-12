@@ -104,6 +104,8 @@ Al finalizar esta fase debe existir:
 - [x] Flujo de pagos con verificación implementado.
 - [x] Excedentes de pago aplicados a cuotas siguientes de la misma venta
   (F-10) con trazabilidad en `pago_aplicaciones`.
+- [x] Amortización extraordinaria aplicada desde las últimas cuotas (F-11),
+  conservando la mensualidad y reduciendo el plazo pendiente.
 
 ---
 
@@ -115,11 +117,11 @@ Esta sección es la principal referencia para continuar el desarrollo.
 
 Título:
 
-Amortización extraordinaria (F-11) y seguimiento post-F-10.
+Reestructuración administrativa del plan de pagos (F-33).
 
 Prioridad:
 
-`MEDIUM`
+`HIGH`
 
 Estado:
 
@@ -127,29 +129,26 @@ Estado:
 
 Objetivo:
 
-Sobre el pago multi-cuota ya implementado (F-10):
-
-- evaluar si la amortización extraordinaria F-11 debe REDUCIR el monto de
-  las cuotas restantes (adelanto de capital) o si el pago anticipado a
-  cuotas futuras implementado satisface la regla;
-- si se confirma la reducción de cuotas restantes, diseñar e implementar
-  la opción de "amortización" sin intereses;
-- revisar posibles botones/UX de pago en `cuotas/index` para el pago
-  anticipado multi-cuota.
+Implementar F-33 sin editar cuotas históricas: registrar saldo anterior,
+cuotas pendientes anteriores, nuevo plazo, nuevas cuotas, fecha,
+administrador y observaciones, con autorización, auditoría y transacción.
 
 Archivos probablemente involucrados:
 
-- `app/Services/PaymentAllocationService.php`
+- `app/Services/InstallmentService.php`
 - `app/Models/Cuota.php`
 - `app/Models/Venta.php`
-- `app/Http/Controllers/CuotaController.php`
-- `resources/views/cuotas/index.blade.php`
+- controlador/request/vista administrativa por definir tras revisar el flujo
+  existente de edición de venta;
+- migración nueva solo si el esquema actual no permite conservar el historial.
 
 Documentación requerida:
 
 - `/AGENTS.md`
 - `./MODULES.md`
-- `./BUSINESS_OVERRIDES.md` (regla F-11)
+- `./BUSINESS_OVERRIDES.md` (regla F-33)
+- `/docs/05-DATABASE_BASE.md`
+- `/docs/06-ARCHITECTURE.md`
 
 Agregar únicamente los documentos CORE necesarios.
 
@@ -159,10 +158,9 @@ Agregar únicamente los documentos CORE necesarios.
 
 La tarea estará terminada cuando:
 
-- [ ] el comportamiento F-11 queda definido documentalmente (satisfecho por
-  el anticipo a cuotas o reducción de cuotas restantes);
-- [ ] si aplica, la amortización extraordinaria reduce cuotas restantes sin
-  intereses (F-11);
+- [ ] las cuotas históricas no se editan ni eliminan;
+- [ ] la reestructuración conserva el antes y después con responsable y motivo;
+- [ ] solo administrador puede ejecutarla;
 - [ ] pruebas correspondientes pasan;
 - [ ] no existen regresiones conocidas.
 
@@ -174,8 +172,7 @@ La tarea estará terminada cuando:
 
 Título:
 
-Fase 1C.2: autorización estricta para modificar cuotas con pagos o pagadas
-(regla F-32).
+Amortización extraordinaria F-11 y UX post-F-10.
 
 Fecha:
 
@@ -185,46 +182,46 @@ Resultado:
 
 Implementado y verificado con tests:
 
-- Permiso nuevo `modificar cuotas` (solo rol `administrador`) en
-  `DatabaseSeeder`. La lista de permisos del seed no perdió ningún
-  elemento; se conservó `ver reservas equipo`.
-- `CuotaController::update()`: regla de autorización F-32. Modificar una
-  cuota que ya tenga pagos (`monto_pagado > 0`) o esté pagada requiere el
-  permiso `modificar cuotas`; quien no lo tenga recibe **403**.
-  El permiso `cobrar cuotas` sigue permitiendo registrar pagos sobre
-  cuotas pendientes/vencidas (cajero/gerente conservan `cobrar cuotas`).
-- La validación por excepción de rol (302 con error) se reemplazó por
-  autorización backend genuina (403), alineada con AGENTS.md (no depender
-  solo de ocultar botones). Rol `vendedor` y `supervisor` ya recibían 403
-  por el middleware `can:cobrar cuotas` en la ruta de `cuotas.update`.
-- Tests en `StabilityAuditTest`:
-  - gerente → 403 al modificar cuota pagada (antes 302 con error);
-  - cajero → 403 al modificar cuota pagada;
-  - supervisor → 403 al modificar cuota pagada;
-  - vendedor → 403 al modificar cuota pagada (se mantuvo);
-  - administrador → puede modificar cuota pagada (redirect + monto no
-    disminuye).
+- F-11 queda diferenciado de F-10: un cobro normal aplica desde la cuota
+  elegida hacia las siguientes; una amortización aplica desde la última cuota
+  pendiente hacia atrás.
+- La amortización conserva el monto pactado de las mensualidades completas,
+  reduce la cantidad de cuotas pendientes y deja solo una cuota residual
+  cuando el monto no completa una mensualidad.
+- El movimiento se registra con concepto `amortizacion` y cada importe queda
+  trazado en `pago_aplicaciones`; al anularlo se restaura el plan afectado.
+- Se rechaza una amortización mayor al saldo pendiente de la venta dentro de
+  la transacción, sin dejar movimiento de caja parcial.
+- `cuotas/index` permite elegir entre `Cobrar próximas` (F-10) y
+  `Amortizar plazo` (F-11), usando el saldo total de la venta como límite.
+- Se conserva la autorización backend existente `cobrar cuotas` y el
+  aislamiento por urbanización.
 
 Nota: sin commit ni push, en rama `hogar-inmobiliaria`.
 
 Archivos principales modificados:
 
-- `database/seeders/DatabaseSeeder.php`
+- `app/Services/PaymentAllocationService.php`
+- `app/Services/InstallmentService.php`
+- `app/Services/CashMovementService.php`
+- `app/Models/CashMovement.php`
 - `app/Http/Controllers/CuotaController.php`
-- `tests/Feature/StabilityAuditTest.php`
+- `app/Http/Requests/PayCuotaRequest.php`
+- `resources/views/cuotas/index.blade.php`
+- `tests/Feature/PagoAplicacionesTest.php`
 
 Migraciones:
 
-- Ninguna nueva (permiso gestionado por seeder).
+- Ninguna nueva.
 
 Pruebas ejecutadas:
 
 ```bash
-php artisan test tests/Feature/StabilityAuditTest.php tests/Feature/PagoAplicacionesTest.php
-# 36 passed, 118 assertions
+php artisan test tests/Feature/PagoAplicacionesTest.php tests/Feature/PagoVerificacionTest.php tests/Feature/CashMovementAnnulTest.php tests/Feature/StabilityAuditTest.php
+# 94 passed, 276 assertions
 php artisan test
-# 406 passed, 1568 assertions
+# 410 passed, 1591 assertions
 ```
 
-Pendiente (siguiente tarea): amortización extraordinaria F-11 y revisión
-UX de pago anticipado en `cuotas/index`.
+Pendiente (siguiente tarea): reestructuración administrativa F-33 con
+preservación del historial de cuotas.

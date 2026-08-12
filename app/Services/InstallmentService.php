@@ -149,6 +149,20 @@ class InstallmentService
         });
     }
 
+    public function amortize(Cuota $cuota, float $monto, string $metodoPago, ?User $user, ?string $referencia = null): Cuota
+    {
+        if ($monto <= 0) {
+            throw ValidationException::withMessages(['monto_pagado' => 'El monto a amortizar debe ser mayor a cero.']);
+        }
+
+        return DB::transaction(function () use ($cuota, $monto, $metodoPago, $user, $referencia): Cuota {
+            $movement = $this->cashMovementService->ingresoCuota($cuota, $monto, $metodoPago, $user, $referencia, 'amortizacion');
+            $this->allocationService->amortize($movement, $cuota, $user);
+
+            return $cuota;
+        });
+    }
+
     public function markOverdue(): int
     {
         return Cuota::whereIn('estado', ['pendiente', 'parcial'])

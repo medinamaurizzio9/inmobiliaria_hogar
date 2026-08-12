@@ -11,7 +11,7 @@ class CashMovement extends Model
 {
     public const TIPOS = ['ingreso', 'egreso'];
 
-    public const CONCEPTOS = ['reserva', 'anticipo', 'contado', 'cuota', 'ajuste'];
+    public const CONCEPTOS = ['reserva', 'anticipo', 'contado', 'cuota', 'amortizacion', 'ajuste'];
 
     public const METODOS = ['efectivo', 'transferencia', 'QR', 'banco', 'otro'];
 

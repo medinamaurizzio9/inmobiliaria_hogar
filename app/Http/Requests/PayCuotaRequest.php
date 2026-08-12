@@ -17,6 +17,7 @@ class PayCuotaRequest extends FormRequest
             'monto_pagado' => ['required', 'numeric', 'min:0.01'],
             'metodo_pago' => ['required', 'in:efectivo,transferencia,QR,banco,otro'],
             'referencia' => ['nullable', 'string', 'max:255'],
+            'tipo_aplicacion' => ['nullable', 'in:cuotas,amortizacion'],
         ];
     }
 

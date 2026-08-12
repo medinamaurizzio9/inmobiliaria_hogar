@@ -459,6 +459,80 @@ class PagoAplicacionesTest extends TestCase
             ->assertSee('Cuota Nro 3');
     }
 
+    public function test_amortizacion_extraordinaria_reduce_cuotas_desde_el_final(): void
+    {
+        [$admin, $urb, $venta] = $this->ventaConCuotas(4, 5000);
+
+        app(InstallmentService::class)->amortize($venta->cuotas->first(), 12000, 'efectivo', $admin, 'AMORT-001');
+
+        $cuotas = $venta->cuotas()->orderBy('numero')->get();
+        $this->assertSame(0.0, (float) $cuotas[0]->monto_pagado);
+        $this->assertSame(2000.0, (float) $cuotas[1]->monto_pagado);
+        $this->assertSame(5000.0, (float) $cuotas[2]->monto_pagado);
+        $this->assertSame(5000.0, (float) $cuotas[3]->monto_pagado);
+        $this->assertSame(3000.0, (float) $cuotas[1]->saldo_pendiente);
+        $this->assertSame(5000.0, (float) $cuotas[0]->monto);
+        $this->assertSame(5000.0, (float) $cuotas[1]->monto);
+        $this->assertSame(1, $cuotas->where('saldo_pendiente', '>', 0)->where('saldo_pendiente', '<', 5000)->count());
+
+        $movimiento = CashMovement::query()->latest('id')->firstOrFail();
+        $this->assertSame('amortizacion', $movimiento->concepto);
+        $this->assertCount(3, $movimiento->pagoAplicaciones);
+    }
+
+    public function test_anular_amortizacion_restaura_el_plan(): void
+    {
+        [$admin, $urb, $venta] = $this->ventaConCuotas(3, 5000);
+        app(InstallmentService::class)->amortize($venta->cuotas->first(), 7000, 'efectivo', $admin);
+        $movimiento = CashMovement::query()->latest('id')->firstOrFail();
+
+        app(CashMovementService::class)->annul($movimiento, 'Anulacion de prueba.');
+
+        foreach ($venta->cuotas()->get() as $cuota) {
+            $this->assertSame(0.0, (float) $cuota->monto_pagado);
+            $this->assertSame(5000.0, (float) $cuota->saldo_pendiente);
+        }
+        $this->assertSame('anulado', $movimiento->fresh()->estado);
+    }
+
+    public function test_cajero_puede_elegir_amortizar_desde_cuotas(): void
+    {
+        [$admin, $urb, $venta] = $this->ventaConCuotas(3, 5000);
+        $cajero = $this->crearCajero($urb);
+
+        $this->actingAs($cajero)
+            ->withSession(['urbanizacion_id' => $urb->id])
+            ->put(route('cuotas.update', $venta->cuotas->first()), [
+                'monto_pagado' => 7000,
+                'metodo_pago' => 'efectivo',
+                'referencia' => 'AMORT-UI-001',
+                'tipo_aplicacion' => 'amortizacion',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('cash_movements', [
+            'concepto' => 'amortizacion',
+            'monto' => 7000,
+            'estado' => 'confirmado',
+        ]);
+        $this->assertSame(5000.0, (float) $venta->cuotas->last()->fresh()->monto_pagado);
+    }
+
+    public function test_amortizacion_no_puede_superar_el_saldo_de_la_venta(): void
+    {
+        [$admin, $urb, $venta] = $this->ventaConCuotas(2, 5000);
+
+        try {
+            app(InstallmentService::class)->amortize($venta->cuotas->first(), 10001, 'efectivo', $admin, 'AMORT-EXCESO');
+            $this->fail('La amortizacion mayor al saldo debio rechazarse.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('monto_pagado', $exception->errors());
+        }
+
+        $this->assertDatabaseMissing('cash_movements', ['referencia' => 'AMORT-EXCESO']);
+    }
+
     private function getCaja(User $user, Urbanizacion $urbanizacion): TestResponse
     {
         return $this->actingAs($user)

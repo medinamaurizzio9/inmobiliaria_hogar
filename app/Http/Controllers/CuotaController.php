@@ -17,7 +17,7 @@ class CuotaController extends Controller
     {
         $installmentService->markOverdue();
 
-        $query = UrbanizacionContext::cuotas(Cuota::with('venta.cliente', 'venta.lote.manzano'))->orderBy('fecha_programada');
+        $query = UrbanizacionContext::cuotas(Cuota::with('venta.cliente', 'venta.lote.manzano', 'venta.cuotas'))->orderBy('fecha_programada');
 
         if ($request->query('estado') === 'vencidas') {
             $query->where('estado', 'vencida');
@@ -32,13 +32,21 @@ class CuotaController extends Controller
 
         $this->authorizeManualModification($request->user(), $cuota);
 
-        $installmentService->pay(
+        $arguments = [
             $cuota,
             (float) $request->validated('monto_pagado'),
             $request->validated('metodo_pago'),
             $request->user(),
-            $request->validated('referencia')
-        );
+            $request->validated('referencia'),
+        ];
+
+        if ($request->validated('tipo_aplicacion') === 'amortizacion') {
+            $installmentService->amortize(...$arguments);
+
+            return back()->with('status', 'Amortizacion extraordinaria registrada; se redujo el plazo pendiente.');
+        }
+
+        $installmentService->pay(...$arguments);
 
         return back()->with('status', 'Pago registrado y movimiento de caja generado.');
     }

@@ -108,6 +108,82 @@ class PaymentAllocationService
     }
 
     /**
+     * Aplicar una amortizacion extraordinaria desde la ultima cuota pendiente.
+     * De esta forma se conserva la mensualidad pactada y se reduce el plazo.
+     *
+     * @return Collection<int, PagoAplicacion>
+     */
+    public function amortize(CashMovement $movement, Cuota $primary, ?User $user = null): Collection
+    {
+        if ($movement->estado !== 'confirmado') {
+            throw ValidationException::withMessages([
+                'movimiento' => 'Solo pagos confirmados pueden aplicarse a cuotas.',
+            ]);
+        }
+
+        $totalCents = Money::toCents($movement->monto);
+        $candidatas = Cuota::query()
+            ->where('venta_id', $primary->venta_id)
+            ->where('saldo_pendiente', '>', 0)
+            ->orderByDesc('fecha_vencimiento')
+            ->orderByDesc('fecha_programada')
+            ->orderByDesc('id')
+            ->get();
+        $saldoCents = $candidatas->sum(fn (Cuota $cuota): int => Money::toCents($cuota->saldo_pendiente));
+
+        if ($totalCents <= 0 || $totalCents > $saldoCents) {
+            throw ValidationException::withMessages([
+                'monto_pagado' => 'La amortizacion debe ser mayor a cero y no superar el saldo pendiente de la venta.',
+            ]);
+        }
+
+        $restante = $totalCents;
+        $aplicadas = collect();
+
+        foreach ($candidatas as $cuota) {
+            if ($restante <= 0) {
+                break;
+            }
+
+            $bloqueada = $this->lockCuota((int) $cuota->id);
+            $saldoCuotaCents = Money::toCents($bloqueada->saldo_pendiente);
+            if ($saldoCuotaCents <= 0) {
+                continue;
+            }
+
+            $aplicarCents = min($restante, $saldoCuotaCents);
+            $antes = $bloqueada->toArray();
+            $nuevoPagado = Money::toCents($bloqueada->monto_pagado) + $aplicarCents;
+            $nuevoSaldo = max(0, Money::toCents($bloqueada->monto) - $nuevoPagado);
+
+            $bloqueada->monto_pagado = Money::fromCents($nuevoPagado);
+            $bloqueada->saldo_pendiente = Money::fromCents($nuevoSaldo);
+            $bloqueada->fecha_pago = $nuevoSaldo <= 0 ? now() : $bloqueada->fecha_pago;
+            $bloqueada->estado = $this->cuotaEstado($bloqueada);
+            $bloqueada->save();
+
+            $aplicacion = PagoAplicacion::create([
+                'cash_movement_id' => $movement->id,
+                'cuota_id' => $bloqueada->id,
+                'monto_aplicado' => Money::fromCents($aplicarCents),
+            ]);
+            $aplicadas->push($aplicacion->load('cuota'));
+            $restante -= $aplicarCents;
+
+            $this->auditService->log($bloqueada, 'amortizar_cuota', 'Amortizacion extraordinaria aplicada a la cuota.', $antes, $bloqueada->fresh()->toArray());
+        }
+
+        $this->auditService->log($movement, 'amortizacion_aplicada', 'Amortizacion extraordinaria aplicada desde las ultimas cuotas.', null, [
+            'aplicaciones' => $aplicadas->map(fn (PagoAplicacion $aplicacion): array => [
+                'cuota_id' => $aplicacion->cuota_id,
+                'monto_aplicado' => $aplicacion->monto_aplicado,
+            ])->values()->all(),
+        ]);
+
+        return $aplicadas->values();
+    }
+
+    /**
      * Revertir todas las aplicaciones de un movimiento al anular el pago.
      * Las aplicaciones no se eliminan: quedan como trazabilidad historica.
      *

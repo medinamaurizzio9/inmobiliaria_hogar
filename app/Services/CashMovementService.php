@@ -187,7 +187,7 @@ class CashMovementService
         });
     }
 
-    public function ingresoCuota(Cuota $cuota, float $monto, string $metodoPago, ?User $user, ?string $referencia = null): CashMovement
+    public function ingresoCuota(Cuota $cuota, float $monto, string $metodoPago, ?User $user, ?string $referencia = null, string $concepto = 'cuota'): CashMovement
     {
         if ($monto <= 0) {
             throw ValidationException::withMessages([
@@ -203,7 +203,7 @@ class CashMovementService
             'sale_id' => $cuota->venta_id,
             'installment_id' => $cuota->id,
             'tipo' => 'ingreso',
-            'concepto' => 'cuota',
+            'concepto' => $concepto,
             'metodo_pago' => $metodoPago,
             'monto' => $monto,
             'fecha' => now(),
