@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PayCuotaRequest;
 use App\Models\Cuota;
+use App\Models\User;
 use App\Services\InstallmentService;
 use App\Support\UrbanizacionContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CuotaController extends Controller
@@ -30,9 +30,7 @@ class CuotaController extends Controller
     {
         abort_unless(UrbanizacionContext::cuotaBelongsToCurrent($cuota), 403, 'No tienes acceso a esta urbanizacion');
 
-        if ($cuota->estado === 'pagada' && ! $request->user()->hasRole('administrador')) {
-            throw ValidationException::withMessages(['cuota' => 'Solo un administrador puede modificar cuotas pagadas.']);
-        }
+        $this->authorizeManualModification($request->user(), $cuota);
 
         $installmentService->pay(
             $cuota,
@@ -43,5 +41,16 @@ class CuotaController extends Controller
         );
 
         return back()->with('status', 'Pago registrado y movimiento de caja generado.');
+    }
+
+    private function authorizeManualModification(User $user, Cuota $cuota): void
+    {
+        $hasPayments = (float) $cuota->monto_pagado > 0 || $cuota->estado === 'pagada';
+
+        if (! $hasPayments) {
+            return;
+        }
+
+        abort_unless($user->can('modificar cuotas'), 403, 'Solo un administrador puede modificar cuotas con pagos o pagadas.');
     }
 }

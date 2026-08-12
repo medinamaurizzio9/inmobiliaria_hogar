@@ -174,7 +174,8 @@ La tarea estará terminada cuando:
 
 Título:
 
-Fase 1C.1: pagos multi-cuota y excedentes (F-10) con rol cajero.
+Fase 1C.2: autorización estricta para modificar cuotas con pagos o pagadas
+(regla F-32).
 
 Fecha:
 
@@ -184,88 +185,45 @@ Resultado:
 
 Implementado y verificado con tests:
 
-- Migración `2026_08_11_000001_create_pago_aplicaciones_table`:
-  `pago_aplicaciones` (cash_movement_id, cuota_id, monto_aplicado).
-  Tabla de trazabilidad: la aplicación de un pago a cuotas queda
-  registrada y NO se elimina al anular el pago.
-- Modelo `PagoAplicacion` (tabla opcional `pago_aplicaciones`).
-- `PaymentAllocationService::allocate()`: distribuye un pago confirmado
-  sobre la cuota seleccionada y luego las demás cuotas pendientes o
-  parciales de la MISMA venta ordenadas por `fecha_vencimiento` e id;
-  nunca aplica más que el saldo pendiente de cada cuota ni más que el
-  monto del pago; el sobrante no aplicado no se pierde en el movimiento.
-  Bloquea cuotas con `lockForUpdate` dentro de la transacción.
-  Audita `cobrar_cuota` por cuota y `pago_aplicado` por movimiento.
-- `PaymentAllocationService::reverse()`: al anular un pago revierte las
-  cuotas afectadas por sus aplicaciones (nunca más de lo aplicado),
-  conserva `pago_aplicaciones` como historial y audita
-  `cuota_restaurada_por_anulacion`.
-- `PaymentAllocationService::cuotaEstado()`: estado centralizado
-  (pagada / parcial / vencida / pendiente), compartido con la anulación.
-- `InstallmentService::pay()` y `CashMovementService::confirm()`:
-  reutilizan `allocate()`; el pago ya no se limita al saldo de una sola
-  cuota. Se eliminó la regla que rechazaba montos superiores al saldo de
-  la cuota seleccionada.
-- `CashMovementService::annul()`: si el movimiento tiene aplicaciones usa
-  `reverse()`; si no (datos históricos), conserva el camino anterior
-  (`restoreCuotaAfterAnnulment`) para compatibilidad.
-- Rol `cajero` (migración `2026_08_11_000002` y `DatabaseSeeder`):
-  permisos mínimos (`cobrar cuotas`, ver dashboard/lotes/clientes y
-  recibos de reserva). El rol `vendedor` ya NO tiene `cobrar cuotas`.
-- `CashMovementController` y vistas `caja/index` y `caja/show`: el rol
-  `cajero` puede ver Caja y cobrar cuotas; confirmar/rechazar sigue
-  reservado a administrador/gerente; anular sigue reservado a
-  `can:anular caja`. Sidebar muestra Finanzas a cajero.
-- Recibo PDF multi-cuota: `PdfController` y `pdf/recibo` muestran el
-  desglose de `pago_aplicaciones` y el saldo restante del terreno.
-- Tests: `PagoAplicacionesTest` (25 escenarios: distribución en varias
-  cuotas, excedente por orden de vencimiento, aislamiento de venta,
-  anticipado, anulación total/parcial con restauración, compatibilidad
-  histórica sin aplicaciones, recibo y detalle de caja multi-cuota,
-  permisos del rol cajero y restricciones vendedor/supervisor).
-  `StabilityAuditTest` ajustado: vendedor hoy recibe 403 (sin
-  `cobrar cuotas`) y el caso "modificar cuota pagada" se valida con
-  gerente (`assertSessionHasErrors`).
+- Permiso nuevo `modificar cuotas` (solo rol `administrador`) en
+  `DatabaseSeeder`. La lista de permisos del seed no perdió ningún
+  elemento; se conservó `ver reservas equipo`.
+- `CuotaController::update()`: regla de autorización F-32. Modificar una
+  cuota que ya tenga pagos (`monto_pagado > 0`) o esté pagada requiere el
+  permiso `modificar cuotas`; quien no lo tenga recibe **403**.
+  El permiso `cobrar cuotas` sigue permitiendo registrar pagos sobre
+  cuotas pendientes/vencidas (cajero/gerente conservan `cobrar cuotas`).
+- La validación por excepción de rol (302 con error) se reemplazó por
+  autorización backend genuina (403), alineada con AGENTS.md (no depender
+  solo de ocultar botones). Rol `vendedor` y `supervisor` ya recibían 403
+  por el middleware `can:cobrar cuotas` en la ruta de `cuotas.update`.
+- Tests en `StabilityAuditTest`:
+  - gerente → 403 al modificar cuota pagada (antes 302 con error);
+  - cajero → 403 al modificar cuota pagada;
+  - supervisor → 403 al modificar cuota pagada;
+  - vendedor → 403 al modificar cuota pagada (se mantuvo);
+  - administrador → puede modificar cuota pagada (redirect + monto no
+    disminuye).
 
 Nota: sin commit ni push, en rama `hogar-inmobiliaria`.
 
 Archivos principales modificados:
 
-- `app/Models/PagoAplicacion.php` (nuevo)
-- `app/Services/PaymentAllocationService.php` (nuevo)
-- `database/migrations/2026_08_11_000001_create_pago_aplicaciones_table.php`
-- `database/migrations/2026_08_11_000002_add_cajero_role_and_financial_permissions.php`
-- `app/Models/CashMovement.php`
-- `app/Models/Cuota.php`
-- `app/Services/CashMovementService.php`
-- `app/Services/InstallmentService.php`
-- `app/Services/AuditService.php`
 - `database/seeders/DatabaseSeeder.php`
-- `app/Http/Requests/PayCuotaRequest.php`
-- `app/Http/Controllers/CashMovementController.php`
 - `app/Http/Controllers/CuotaController.php`
-- `app/Http/Controllers/PdfController.php`
-- `routes/web.php`
-- `resources/views/caja/index.blade.php`
-- `resources/views/caja/show.blade.php`
-- `resources/views/layouts/partials/sidebar.blade.php`
-- `resources/views/pdf/recibo.blade.php`
-- `public/css/app.css`
-- `tests/Feature/PagoAplicacionesTest.php` (nuevo)
 - `tests/Feature/StabilityAuditTest.php`
 
 Migraciones:
 
-- `2026_08_11_000001_create_pago_aplicaciones_table`
-- `2026_08_11_000002_add_cajero_role_and_financial_permissions`
+- Ninguna nueva (permiso gestionado por seeder).
 
 Pruebas ejecutadas:
 
 ```bash
+php artisan test tests/Feature/StabilityAuditTest.php tests/Feature/PagoAplicacionesTest.php
+# 36 passed, 118 assertions
 php artisan test
-# 403 passed, 1563 assertions
-vendor/bin/pint --dirty
-# applied
+# 406 passed, 1568 assertions
 ```
 
 Pendiente (siguiente tarea): amortización extraordinaria F-11 y revisión

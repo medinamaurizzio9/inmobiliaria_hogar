@@ -57,6 +57,7 @@ class DatabaseSeeder extends Seeder
             'descargar recibo reserva',
             'imprimir recibo reserva',
             'cobrar cuotas',
+            'modificar cuotas',
             'convertir reservas',
             'ver reservas equipo',
             'anular caja',

@@ -78,7 +78,67 @@ class StabilityAuditTest extends TestCase
                 'monto_pagado' => 1,
                 'metodo_pago' => 'efectivo',
             ])
-            ->assertSessionHasErrors();
+            ->assertForbidden();
+    }
+
+    public function test_cajero_no_puede_editar_cuota_pagada(): void
+    {
+        $this->seed();
+
+        $cajero = User::where('email', 'cajero@impacto.test')->firstOrFail();
+        $urbanizacionId = Urbanizacion::orderBy('id')->firstOrFail()->id;
+        $cuotaPagada = Cuota::where('estado', 'pagada')
+            ->whereHas('venta.lote.manzano', fn ($query) => $query->where('urbanizacion_id', $urbanizacionId))
+            ->firstOrFail();
+
+        $this->actingAs($cajero)
+            ->withSession(['urbanizacion_id' => $urbanizacionId])
+            ->put(route('cuotas.update', $cuotaPagada), [
+                'monto_pagado' => 1,
+                'metodo_pago' => 'efectivo',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_supervisor_no_puede_editar_cuota_pagada(): void
+    {
+        $this->seed();
+
+        $supervisor = User::where('email', 'supervisor@impacto.test')->firstOrFail();
+        $urbanizacionId = $supervisor->urbanizacionesAsignadas()->firstOrFail()->id;
+        $cuotaPagada = Cuota::where('estado', 'pagada')
+            ->whereHas('venta.lote.manzano', fn ($query) => $query->where('urbanizacion_id', $urbanizacionId))
+            ->firstOrFail();
+
+        $this->actingAs($supervisor)
+            ->withSession(['urbanizacion_id' => $urbanizacionId])
+            ->put(route('cuotas.update', $cuotaPagada), [
+                'monto_pagado' => 1,
+                'metodo_pago' => 'efectivo',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_administrador_puede_modificar_cuota_pagada(): void
+    {
+        $this->seed();
+
+        $administrador = User::where('email', 'admin@impacto.test')->firstOrFail();
+        $urbanizacionId = Urbanizacion::orderBy('id')->firstOrFail()->id;
+        $cuotaPagada = Cuota::where('estado', 'pagada')
+            ->whereHas('venta.lote.manzano', fn ($query) => $query->where('urbanizacion_id', $urbanizacionId))
+            ->firstOrFail();
+
+        $this->actingAs($administrador)
+            ->withSession(['urbanizacion_id' => $urbanizacionId])
+            ->put(route('cuotas.update', $cuotaPagada), [
+                'monto_pagado' => 500,
+                'metodo_pago' => 'efectivo',
+                'referencia' => 'ADMIN-AJUSTE-01',
+            ])
+            ->assertRedirect();
+
+        $this->assertGreaterThanOrEqual((float) $cuotaPagada->monto_pagado, (float) $cuotaPagada->fresh()->monto_pagado);
     }
 
     public function test_reserva_vencida_libera_lote(): void
