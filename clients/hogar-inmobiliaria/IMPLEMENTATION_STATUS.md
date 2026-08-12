@@ -121,7 +121,7 @@ Esta sección es la principal referencia para continuar el desarrollo.
 
 Título:
 
-Fase 5 — Reportes gerenciales y cartera financiera avanzada.
+Fase 6 — Hardening final, UX, pruebas de aceptación y preparación de producción.
 
 Prioridad:
 
@@ -133,20 +133,21 @@ Estado:
 
 Objetivo:
 
-Construir reportes gerenciales y de cartera sobre ventas, cuotas, cobros,
-vencimientos, devoluciones y montos retenidos existentes.
+Realizar hardening final, revisión UX focalizada, pruebas de aceptación y
+preparación segura para producción sin ampliar reglas de negocio.
 
 Archivos probablemente involucrados:
 
-- `app/Http/Controllers/ReportController.php`
-- consultas de ventas, cuotas, pagos y devoluciones existentes;
-- vistas y exportaciones de reportes financieros.
+- flujos críticos implementados;
+- configuración y despliegue;
+- pruebas de aceptación y documentación operativa.
 
 Documentación requerida:
 
 - `/AGENTS.md`
 - `./MODULES.md`
-- `./BUSINESS_OVERRIDES.md` (reglas F-29, F-30, F-31 y F-35)
+- `./BUSINESS_OVERRIDES.md`
+- `/docs/09-DEPLOYMENT.md`
 - `/docs/06-ARCHITECTURE.md`
 
 Agregar únicamente los documentos CORE necesarios.
@@ -157,10 +158,10 @@ Agregar únicamente los documentos CORE necesarios.
 
 La tarea estará terminada cuando:
 
-- [ ] cartera total, al día y vencida calculada con datos reales;
-- [ ] cobros, devoluciones y retenciones no se duplican;
-- [ ] filtros gerenciales y exportaciones funcionan;
-- [ ] aislamiento por urbanización verificado;
+- [ ] pruebas de aceptación completas;
+- [ ] hardening de seguridad y concurrencia revisado;
+- [ ] UX crítica verificada en móvil y escritorio;
+- [ ] preparación de producción documentada;
 - [ ] pruebas correspondientes pasan.
 
 ---
@@ -171,7 +172,7 @@ La tarea estará terminada cuando:
 
 Título:
 
-Fase 4 — Cobranza / Caja Rápida.
+Fase 5 — Reportes gerenciales y cartera financiera avanzada.
 
 Fecha:
 
@@ -181,43 +182,40 @@ Resultado:
 
 Implementado y verificado con tests:
 
-- Pantalla `/cobranza` para administrador, gerente y cajero.
-- Buscador único por datos del cliente, terreno, venta y referencia.
-- Tarjetas independientes por venta/terreno con deuda priorizada.
-- Modal responsive de cobro con efectivo, QR y transferencia.
-- Preview puro en `PaymentAllocationService`, compartiendo el orden real de
-  cobro normal y amortización, sin escrituras en base de datos.
-- Cobros confirmados transaccionales y pagos pendientes sin afectar deuda.
-- Confirmación/rechazo de pendientes con recálculo y validación de saldo actual.
-- Resultado inmediato con cuotas afectadas, saldo y recibo PDF.
-- Historial limitado, estado de cuenta y resumen real de caja del día.
+- Pantalla `/reportes/gerencia` exclusiva para administrador y gerente.
+- Filtros combinables por fechas, urbanización, cliente, vendedor, modalidad,
+  estado financiero, estado de venta y método de pago.
+- KPI de ventas, cobranza bruta/neta, devoluciones, retenciones, cartera,
+  cuotas y operaciones.
+- Cartera independiente por venta/terreno, vencida, próxima y rescindida.
+- Proyección de próximos cobros a 7, 15 y 30 días.
+- Agrupaciones por urbanización, vendedor, modalidad, método y usuario de caja.
+- Reportes de devoluciones/rescisiones y reestructuraciones.
+- CSV consume el mismo servicio y filtros que la pantalla.
+- Consultas con eager loading, alcance de urbanización y límite natural por filtro.
 
 Nota: sin commit ni push, en rama `hogar-inmobiliaria`.
 
 Archivos principales modificados:
 
-- `app/Http/Controllers/CobranzaController.php`
-- `app/Services/QuickCollectionService.php`
-- `app/Services/PaymentAllocationService.php`
-- `app/Http/Controllers/CashMovementController.php`
-- `resources/views/cobranza/index.blade.php`
+- `app/Services/ManagementReportService.php`
+- `app/Http/Controllers/ReportController.php`
+- `resources/views/reportes/gerencia.blade.php`
 - `resources/views/layouts/partials/sidebar.blade.php`
-- `public/css/app.css`
 - `routes/web.php`
-- `tests/Feature/QuickCollectionTest.php`
+- `tests/Feature/ManagementReportsTest.php`
 
 Migraciones:
 
-- Ninguna. Se reutilizaron ventas, cuotas, `cash_movements` y
-  `pago_aplicaciones` existentes.
+- Ninguna. Los reportes son consultas sobre entidades financieras existentes.
 
 Pruebas ejecutadas:
 
 ```bash
-php artisan test tests/Feature/QuickCollectionTest.php
-# 10 passed, 55 assertions
+php artisan test tests/Feature/ManagementReportsTest.php
+# 9 passed, 39 assertions
 php artisan test
-# 483 passed, 1843 assertions
+# 492 passed, 1882 assertions
 ```
 
-Pendiente (siguiente tarea): Fase 5 — Reportes gerenciales y cartera financiera avanzada.
+Pendiente (siguiente tarea): Fase 6 — Hardening final, UX, pruebas de aceptación y preparación de producción.

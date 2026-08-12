@@ -138,6 +138,8 @@ Route::middleware('auth')->group(function (): void {
 
             Route::middleware('can:ver reportes')->prefix('reportes')->name('reportes.')->group(function (): void {
                 Route::get('/', [ReportController::class, 'index'])->name('index');
+                Route::get('/gerencia', [ReportController::class, 'management'])->name('gerencia');
+                Route::get('/gerencia/csv', [ReportController::class, 'managementCsv'])->name('gerencia.csv');
                 Route::get('/lotes-estado', [ReportController::class, 'lotesEstado'])->name('lotes-estado');
                 Route::get('/reservas', [ReportController::class, 'reservas'])->middleware('can:ver reporte reservas')->name('reservas');
                 Route::get('/reservas/excel', [ReportController::class, 'reservasExcel'])->middleware('can:exportar reporte reservas')->name('reservas.excel');

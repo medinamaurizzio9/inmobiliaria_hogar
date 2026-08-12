@@ -114,6 +114,7 @@
                 <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>%</span> Reportes</button>
                 <div class="sidebar-submenu">
                     <a @class(['sidebar-link', 'active' => $active('reportes.index')]) href="{{ route('reportes.index') }}">Resumen</a>
+                    @if($isAdmin || $isGerente)<a @class(['sidebar-link', 'active' => $active('reportes.gerencia')]) href="{{ route('reportes.gerencia') }}">Reportes gerenciales</a>@endif
                     <a @class(['sidebar-link', 'active' => $active('reportes.lotes-estado')]) href="{{ route('reportes.lotes-estado') }}">Lotes por estado</a>
                     <a @class(['sidebar-link', 'active' => $active('reportes.reservas')]) href="{{ route('reportes.reservas') }}">Reservas</a>
                     @can('ver reporte mejor vendedor')<a @class(['sidebar-link', 'active' => $active('reportes.mejor-vendedor')]) href="{{ route('reportes.mejor-vendedor') }}">Mejor vendedor</a>@endcan

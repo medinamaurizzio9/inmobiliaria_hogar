@@ -14,6 +14,7 @@ use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
 use App\Services\AuditService;
+use App\Services\ManagementReportService;
 use App\Services\ReservationVisibilityService;
 use App\Services\SystemSettingsService;
 use App\Support\UrbanizacionContext;
@@ -27,6 +28,30 @@ use Illuminate\View\View;
 
 class ReportController extends Controller
 {
+    private const MANAGEMENT_FILTERS = ['desde', 'hasta', 'urbanizacion_id', 'cliente_id', 'vendedor_id', 'modalidad', 'estado_financiero', 'metodo_pago', 'estado_venta', 'horizonte'];
+
+    public function management(Request $request, ManagementReportService $service): View
+    {
+        $this->authorizeManagement($request);
+        $filters = $request->only(self::MANAGEMENT_FILTERS);
+
+        return view('reportes.gerencia', $service->data($filters) + ['filters' => $filters, 'urbanizaciones' => UrbanizacionContext::accessibleUrbanizaciones($request->user()), 'clientes' => Cliente::orderBy('nombre')->get(), 'vendedores' => User::role('vendedor')->orderBy('name')->get()]);
+    }
+
+    public function managementCsv(Request $request, ManagementReportService $service): Response
+    {
+        $this->authorizeManagement($request);
+        $data = $service->data($request->only(self::MANAGEMENT_FILTERS));
+        $csv = $this->csvFromRows(['venta', 'cliente', 'telefono', 'urbanizacion', 'terreno', 'modalidad', 'vendedor', 'precio', 'inicial', 'cobrado', 'saldo', 'proxima', 'cuotas_vencidas', 'monto_vencido', 'dias_atraso', 'estado'], $data['rows'], fn ($r) => array_values($r));
+
+        return response($csv, 200, ['Content-Type' => 'text/csv', 'Content-Disposition' => 'attachment; filename="cartera-gerencial.csv"']);
+    }
+
+    private function authorizeManagement(Request $request): void
+    {
+        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente']), 403, 'No tienes acceso a reportes gerenciales.');
+    }
+
     public function index(): View
     {
         $urbanizacionId = UrbanizacionContext::currentId();
