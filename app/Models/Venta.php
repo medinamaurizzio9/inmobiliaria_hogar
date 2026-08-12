@@ -26,6 +26,10 @@ class Venta extends Model
         'cuota_inicial',
         'saldo_financiar',
         'numero_cuotas',
+        'fecha_primer_vencimiento',
+        'descuento',
+        'descuento_autorizado_por',
+        'descuento_autorizado_en',
         'estado',
         'observaciones',
     ];
@@ -34,6 +38,9 @@ class Venta extends Model
     {
         return [
             'fecha_venta' => 'date',
+            'fecha_primer_vencimiento' => 'date',
+            'descuento_autorizado_en' => 'datetime',
+            'descuento' => 'decimal:2',
             'precio_final' => 'decimal:2',
             'precio_base_usd' => 'decimal:2',
             'incremento_credito_valor' => 'decimal:2',
@@ -64,6 +71,11 @@ class Venta extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function descuentoAutorizador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'descuento_autorizado_por');
     }
 
     public function cuotas(): HasMany

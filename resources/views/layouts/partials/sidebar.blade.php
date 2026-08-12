@@ -5,6 +5,7 @@
     $isGerente = $user?->hasRole('gerente');
     $isSupervisor = $user?->hasRole('supervisor');
     $isVendedor = $user?->hasRole('vendedor');
+    $isCajero = $user?->hasRole('cajero');
     $isCliente = $user?->hasRole('cliente');
     $hasProject = (bool) $urbanizacionActual || $isCliente;
     $active = fn (array|string $patterns) => request()->routeIs(...(array) $patterns);
@@ -91,7 +92,7 @@
             </div>
         @endif
 
-        @if($hasProject && ($isAdmin || $isGerente) && $user?->can('cobrar cuotas'))
+        @if($hasProject && ($isAdmin || $isGerente || $isCajero) && $user?->can('cobrar cuotas'))
             @php($isOpen = $active(['cuotas.*', 'caja.*']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="finanzas">
                 <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>$</span> Finanzas</button>

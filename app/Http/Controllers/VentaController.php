@@ -55,6 +55,17 @@ class VentaController extends Controller
         ]);
     }
 
+    public function show(Venta $venta): View
+    {
+        abort_unless(UrbanizacionContext::ventaBelongsToCurrent($venta), 403, 'No tienes acceso a esta urbanizacion');
+
+        $venta->load('cliente', 'lote.manzano.urbanizacion', 'cuotas', 'descuentoAutorizador');
+
+        return view('ventas.show', [
+            'venta' => $venta,
+        ]);
+    }
+
     public function create(Request $request): View
     {
         abort_if($request->user()->hasAnyRole(['vendedor', 'supervisor']), 403, 'Los asesores solo pueden crear reservas. No tienen permiso para registrar ventas.');

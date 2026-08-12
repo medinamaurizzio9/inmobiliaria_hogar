@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\Cuota;
 use App\Models\Lote;
 use App\Models\Reserva;
+use App\Models\Urbanizacion;
 use App\Models\User;
 use App\Models\Venta;
 use App\Services\ReservationService;
@@ -53,6 +54,25 @@ class StabilityAuditTest extends TestCase
             ->firstOrFail();
 
         $this->actingAs($vendedor)
+            ->withSession(['urbanizacion_id' => $urbanizacionId])
+            ->put(route('cuotas.update', $cuotaPagada), [
+                'monto_pagado' => 1,
+                'metodo_pago' => 'efectivo',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_gerente_no_puede_editar_cuota_pagada(): void
+    {
+        $this->seed();
+
+        $gerente = User::where('email', 'gerente@impacto.test')->firstOrFail();
+        $urbanizacionId = Urbanizacion::orderBy('id')->firstOrFail()->id;
+        $cuotaPagada = Cuota::where('estado', 'pagada')
+            ->whereHas('venta.lote.manzano', fn ($query) => $query->where('urbanizacion_id', $urbanizacionId))
+            ->firstOrFail();
+
+        $this->actingAs($gerente)
             ->withSession(['urbanizacion_id' => $urbanizacionId])
             ->put(route('cuotas.update', $cuotaPagada), [
                 'monto_pagado' => 1,

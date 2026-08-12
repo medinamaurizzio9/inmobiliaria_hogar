@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\Reserva;
+use Illuminate\Foundation\Http\FormRequest;
 
 class StoreVentaRequest extends FormRequest
 {
@@ -22,8 +22,10 @@ class StoreVentaRequest extends FormRequest
             'tipo_operacion' => ['required', 'in:'.implode(',', Reserva::TIPOS_OPERACION)],
             'fecha_venta' => ['required', 'date'],
             'precio_final' => ['required', 'numeric', 'min:0'],
+            'descuento' => ['nullable', 'numeric', 'min:0', 'lte:precio_final'],
             'cuota_inicial' => ['nullable', 'numeric', 'min:0', 'lte:precio_final'],
             'numero_cuotas' => ['nullable', 'integer', 'min:0'],
+            'fecha_primer_vencimiento' => ['nullable', 'date'],
             'estado' => ['required', 'in:activa,completada,anulada'],
             'observaciones' => ['nullable', 'string'],
             'metodo_pago' => ['nullable', 'in:efectivo,transferencia,QR,banco,otro'],

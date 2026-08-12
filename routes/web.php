@@ -10,26 +10,29 @@ use App\Http\Controllers\CuotaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\GrupoComercialController;
-use App\Http\Controllers\LoteController;
 use App\Http\Controllers\LoteCommercialUpdateController;
+use App\Http\Controllers\LoteController;
 use App\Http\Controllers\LotImportController;
 use App\Http\Controllers\ManzanoController;
 use App\Http\Controllers\MapaController;
 use App\Http\Controllers\MiCuentaController;
 use App\Http\Controllers\PasswordChangeController;
 use App\Http\Controllers\PdfController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\PublicDisponibilidadController;
 use App\Http\Controllers\PublicReceiptVerificationController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\SystemSettingController;
-use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\UrbanizacionAssignmentController;
 use App\Http\Controllers\UrbanizacionController;
 use App\Http\Controllers\UrbanizacionSelectionController;
+use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VentaController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 Route::get('/disponibilidad', PublicDisponibilidadController::class)->name('disponibilidad.publica');
 Route::get('/u/{slug}', [PublicDisponibilidadController::class, 'showBySlug'])->name('disponibilidad.urbanizacion');
@@ -76,96 +79,99 @@ Route::middleware('auth')->group(function (): void {
         });
 
         Route::middleware(['urbanizacion.selected', 'urbanizacion.access'])->group(function (): void {
-        Route::get('/dashboard', DashboardController::class)->middleware('can:ver dashboard')->name('dashboard');
-        Route::get('/mapa', MapaController::class)->middleware('can:ver lotes')->name('mapa');
-        Route::get('/mapa/lote/{lote}', [MapaController::class, 'loteJson'])->middleware('can:ver lotes')->name('mapa.lotes.show-json');
-        Route::post('/mapa/mi-ubicacion', [MapaController::class, 'myLocation'])->middleware('can:ver lotes')->name('mapa.mi-ubicacion');
-        Route::patch('/mapa/lotes/{lote}/posicion', [MapaController::class, 'updateLotePosition'])->middleware('can:editar lotes')->name('mapa.lotes.posicion');
-        Route::delete('/mapa/lotes/{lote}/posicion', [MapaController::class, 'clearLotePosition'])->middleware('can:editar lotes')->name('mapa.lotes.posicion.clear');
+            Route::get('/dashboard', DashboardController::class)->middleware('can:ver dashboard')->name('dashboard');
+            Route::get('/mapa', MapaController::class)->middleware('can:ver lotes')->name('mapa');
+            Route::get('/mapa/lote/{lote}', [MapaController::class, 'loteJson'])->middleware('can:ver lotes')->name('mapa.lotes.show-json');
+            Route::post('/mapa/mi-ubicacion', [MapaController::class, 'myLocation'])->middleware('can:ver lotes')->name('mapa.mi-ubicacion');
+            Route::patch('/mapa/lotes/{lote}/posicion', [MapaController::class, 'updateLotePosition'])->middleware('can:editar lotes')->name('mapa.lotes.posicion');
+            Route::delete('/mapa/lotes/{lote}/posicion', [MapaController::class, 'clearLotePosition'])->middleware('can:editar lotes')->name('mapa.lotes.posicion.clear');
 
-        Route::resource('urbanizaciones', UrbanizacionController::class)->parameters(['urbanizaciones' => 'urbanizacion'])->except('show')->middlewareFor(['index'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear urbanizaciones')->middlewareFor(['edit', 'update'], 'can:editar urbanizaciones')->middlewareFor(['destroy'], 'can:eliminar urbanizaciones');
-        Route::resource('manzanos', ManzanoController::class)->except('show')->middlewareFor(['index'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear manzanos')->middlewareFor(['edit', 'update'], 'can:editar manzanos')->middlewareFor(['destroy'], 'can:eliminar manzanos');
-        Route::patch('/lotes/{lote}/comercial-rapido', [LoteCommercialUpdateController::class, 'updateQuick'])->middleware('can:ver lotes')->name('lotes.comercial-rapido');
-        Route::post('/lotes/comercial-masivo', [LoteCommercialUpdateController::class, 'bulkUpdate'])->middleware('can:ver lotes')->name('lotes.comercial-masivo');
-        Route::resource('lotes', LoteController::class)->middlewareFor(['index', 'show'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear lotes')->middlewareFor(['edit', 'update'], 'can:editar lotes')->middlewareFor(['destroy'], 'can:eliminar lotes');
-        Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->middleware('can:ver clientes')->name('clientes.buscar');
-        Route::resource('clientes', ClienteController::class)->middlewareFor(['index', 'show'], 'can:ver clientes')->middlewareFor(['create', 'store'], 'can:crear clientes')->middlewareFor(['edit', 'update'], 'can:editar clientes')->middlewareFor(['destroy'], 'can:eliminar clientes');
-        Route::resource('ventas', VentaController::class)->except('show')->middlewareFor(['index'], 'can:ver ventas')->middlewareFor(['edit', 'update'], 'can:editar ventas')->middlewareFor(['create', 'store'], 'can:crear ventas')->middlewareFor(['destroy'], 'can:anular ventas');
-        Route::resource('reservas', ReservaController::class)->except('show')->middlewareFor(['index'], 'can:ver reservas')->middlewareFor(['create', 'store'], 'can:crear reservas')->middlewareFor(['destroy'], 'can:cancelar reservas');
-        Route::get('reservas/{reserva}/recibo', [PdfController::class, 'reservationReceipt'])->name('reservas.recibo');
-        Route::post('reservas/{reserva}/vencer', [ReservaController::class, 'expire'])->middleware('can:cancelar reservas')->name('reservas.expire');
-        Route::resource('cuotas', CuotaController::class)->middleware('can:cobrar cuotas')->only('index', 'update');
-        Route::get('/lotes-importar', [LotImportController::class, 'create'])->middleware('can:crear lotes')->name('lotes.import.create');
-        Route::post('/lotes-importar/preview', [LotImportController::class, 'preview'])->middleware('can:crear lotes')->name('lotes.import.preview');
-        Route::post('/lotes-importar', [LotImportController::class, 'store'])->middleware('can:crear lotes')->name('lotes.import.store');
+            Route::resource('urbanizaciones', UrbanizacionController::class)->parameters(['urbanizaciones' => 'urbanizacion'])->except('show')->middlewareFor(['index'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear urbanizaciones')->middlewareFor(['edit', 'update'], 'can:editar urbanizaciones')->middlewareFor(['destroy'], 'can:eliminar urbanizaciones');
+            Route::resource('manzanos', ManzanoController::class)->except('show')->middlewareFor(['index'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear manzanos')->middlewareFor(['edit', 'update'], 'can:editar manzanos')->middlewareFor(['destroy'], 'can:eliminar manzanos');
+            Route::patch('/lotes/{lote}/comercial-rapido', [LoteCommercialUpdateController::class, 'updateQuick'])->middleware('can:ver lotes')->name('lotes.comercial-rapido');
+            Route::post('/lotes/comercial-masivo', [LoteCommercialUpdateController::class, 'bulkUpdate'])->middleware('can:ver lotes')->name('lotes.comercial-masivo');
+            Route::resource('lotes', LoteController::class)->middlewareFor(['index', 'show'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear lotes')->middlewareFor(['edit', 'update'], 'can:editar lotes')->middlewareFor(['destroy'], 'can:eliminar lotes');
+            Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->middleware('can:ver clientes')->name('clientes.buscar');
+            Route::resource('clientes', ClienteController::class)->middlewareFor(['index', 'show'], 'can:ver clientes')->middlewareFor(['create', 'store'], 'can:crear clientes')->middlewareFor(['edit', 'update'], 'can:editar clientes')->middlewareFor(['destroy'], 'can:eliminar clientes');
+            Route::resource('ventas', VentaController::class)->middlewareFor(['index', 'show'], 'can:ver ventas')->middlewareFor(['edit', 'update'], 'can:editar ventas')->middlewareFor(['create', 'store'], 'can:crear ventas')->middlewareFor(['destroy'], 'can:anular ventas');
+            Route::resource('reservas', ReservaController::class)->except('show')->middlewareFor(['index'], 'can:ver reservas')->middlewareFor(['create', 'store'], 'can:crear reservas')->middlewareFor(['destroy'], 'can:cancelar reservas');
+            Route::get('reservas/{reserva}/recibo', [PdfController::class, 'reservationReceipt'])->name('reservas.recibo');
+            Route::post('reservas/{reserva}/vencer', [ReservaController::class, 'expire'])->middleware('can:cancelar reservas')->name('reservas.expire');
+            Route::resource('cuotas', CuotaController::class)->middleware('can:cobrar cuotas')->only('index', 'update');
+            Route::get('/lotes-importar', [LotImportController::class, 'create'])->middleware('can:crear lotes')->name('lotes.import.create');
+            Route::post('/lotes-importar/preview', [LotImportController::class, 'preview'])->middleware('can:crear lotes')->name('lotes.import.preview');
+            Route::post('/lotes-importar', [LotImportController::class, 'store'])->middleware('can:crear lotes')->name('lotes.import.store');
 
-        Route::get('/caja', [CashMovementController::class, 'index'])->middleware('can:cobrar cuotas')->name('caja.index');
-        Route::post('/caja/{cashMovement}/anular', [CashMovementController::class, 'annul'])->middleware('can:anular caja')->name('caja.annul');
+            Route::get('/caja', [CashMovementController::class, 'index'])->middleware('can:cobrar cuotas')->name('caja.index');
+            Route::get('/caja/{cashMovement}', [CashMovementController::class, 'show'])->middleware('can:cobrar cuotas')->name('caja.show');
+            Route::post('/caja/{cashMovement}/confirmar', [CashMovementController::class, 'confirm'])->middleware('can:cobrar cuotas')->name('caja.confirm');
+            Route::post('/caja/{cashMovement}/rechazar', [CashMovementController::class, 'reject'])->middleware('can:cobrar cuotas')->name('caja.reject');
+            Route::post('/caja/{cashMovement}/anular', [CashMovementController::class, 'annul'])->middleware('can:anular caja')->name('caja.annul');
 
-        Route::get('/pdf/recibo/{cashMovement}', [PdfController::class, 'receipt'])->name('pdf.recibo');
-        Route::get('/pdf/plan-pagos/{venta}', [PdfController::class, 'paymentPlan'])->name('pdf.plan');
-        Route::get('/pdf/contrato/{venta}', [PdfController::class, 'contract'])->name('pdf.contrato');
+            Route::get('/pdf/recibo/{cashMovement}', [PdfController::class, 'receipt'])->name('pdf.recibo');
+            Route::get('/pdf/plan-pagos/{venta}', [PdfController::class, 'paymentPlan'])->name('pdf.plan');
+            Route::get('/pdf/contrato/{venta}', [PdfController::class, 'contract'])->name('pdf.contrato');
 
-        Route::middleware('can:ver reportes')->prefix('reportes')->name('reportes.')->group(function (): void {
-            Route::get('/', [ReportController::class, 'index'])->name('index');
-            Route::get('/lotes-estado', [ReportController::class, 'lotesEstado'])->name('lotes-estado');
-            Route::get('/reservas', [ReportController::class, 'reservas'])->middleware('can:ver reporte reservas')->name('reservas');
-            Route::get('/reservas/excel', [ReportController::class, 'reservasExcel'])->middleware('can:exportar reporte reservas')->name('reservas.excel');
-            Route::get('/reservas/pdf', [ReportController::class, 'reservasPdf'])->middleware('can:exportar reporte reservas')->name('reservas.pdf');
-            Route::get('/cuotas', [ReportController::class, 'cuotas'])->name('cuotas');
-            Route::get('/ingresos', [ReportController::class, 'ingresos'])->name('ingresos');
-            Route::get('/estado-cuenta', [ReportController::class, 'estadoCuenta'])->name('estado-cuenta');
-            Route::get('/mejor-vendedor', [ReportController::class, 'mejorVendedor'])->middleware('can:ver reporte mejor vendedor')->name('mejor-vendedor');
-            Route::get('/mejor-vendedor/excel', [ReportController::class, 'mejorVendedorExcel'])->middleware('can:exportar reporte mejor vendedor')->name('mejor-vendedor.excel');
-            Route::get('/mejor-vendedor/pdf', [ReportController::class, 'mejorVendedorPdf'])->middleware('can:exportar reporte mejor vendedor')->name('mejor-vendedor.pdf');
-            Route::get('/exportaciones', [ReportController::class, 'exportaciones'])->name('exportaciones');
-            Route::get('/{reporte}/csv', [ReportController::class, 'csv'])->middleware('can:exportar reportes')->name('csv');
-        });
+            Route::middleware('can:ver reportes')->prefix('reportes')->name('reportes.')->group(function (): void {
+                Route::get('/', [ReportController::class, 'index'])->name('index');
+                Route::get('/lotes-estado', [ReportController::class, 'lotesEstado'])->name('lotes-estado');
+                Route::get('/reservas', [ReportController::class, 'reservas'])->middleware('can:ver reporte reservas')->name('reservas');
+                Route::get('/reservas/excel', [ReportController::class, 'reservasExcel'])->middleware('can:exportar reporte reservas')->name('reservas.excel');
+                Route::get('/reservas/pdf', [ReportController::class, 'reservasPdf'])->middleware('can:exportar reporte reservas')->name('reservas.pdf');
+                Route::get('/cuotas', [ReportController::class, 'cuotas'])->name('cuotas');
+                Route::get('/ingresos', [ReportController::class, 'ingresos'])->name('ingresos');
+                Route::get('/estado-cuenta', [ReportController::class, 'estadoCuenta'])->name('estado-cuenta');
+                Route::get('/mejor-vendedor', [ReportController::class, 'mejorVendedor'])->middleware('can:ver reporte mejor vendedor')->name('mejor-vendedor');
+                Route::get('/mejor-vendedor/excel', [ReportController::class, 'mejorVendedorExcel'])->middleware('can:exportar reporte mejor vendedor')->name('mejor-vendedor.excel');
+                Route::get('/mejor-vendedor/pdf', [ReportController::class, 'mejorVendedorPdf'])->middleware('can:exportar reporte mejor vendedor')->name('mejor-vendedor.pdf');
+                Route::get('/exportaciones', [ReportController::class, 'exportaciones'])->name('exportaciones');
+                Route::get('/{reporte}/csv', [ReportController::class, 'csv'])->middleware('can:exportar reportes')->name('csv');
+            });
 
-        Route::prefix('administracion')->name('admin.')->group(function (): void {
-            Route::get('/configuracion-comercial', [CommercialSettingController::class, 'edit'])->name('configuracion');
-            Route::put('/configuracion-comercial', [CommercialSettingController::class, 'update'])->name('configuracion.update');
-        });
+            Route::prefix('administracion')->name('admin.')->group(function (): void {
+                Route::get('/configuracion-comercial', [CommercialSettingController::class, 'edit'])->name('configuracion');
+                Route::put('/configuracion-comercial', [CommercialSettingController::class, 'update'])->name('configuracion.update');
+            });
 
-        Route::middleware('can:administrar usuarios')->prefix('administracion')->name('admin.')->group(function (): void {
-    Route::get('/usuarios', [UsuarioController::class, 'index'])->name('usuarios');
-    Route::get('/usuarios/create', [UsuarioController::class, 'create'])->name('usuarios.create');
-    Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store');
-    Route::get('/usuarios/importar', [UsuarioController::class, 'importForm'])->name('usuarios.import');
-    Route::post('/usuarios/importar', [UsuarioController::class, 'import'])->name('usuarios.import.store');
-    Route::get('/usuarios/exportar', [UsuarioController::class, 'export'])->name('usuarios.export');
-    Route::get('/usuarios/plantilla', [UsuarioController::class, 'template'])->name('usuarios.template');
-    Route::get('/usuarios/{usuario}/edit', [UsuarioController::class, 'edit'])->name('usuarios.edit');
-    Route::put('/usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
-    Route::delete('/usuarios/{usuario}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
+            Route::middleware('can:administrar usuarios')->prefix('administracion')->name('admin.')->group(function (): void {
+                Route::get('/usuarios', [UsuarioController::class, 'index'])->name('usuarios');
+                Route::get('/usuarios/create', [UsuarioController::class, 'create'])->name('usuarios.create');
+                Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store');
+                Route::get('/usuarios/importar', [UsuarioController::class, 'importForm'])->name('usuarios.import');
+                Route::post('/usuarios/importar', [UsuarioController::class, 'import'])->name('usuarios.import.store');
+                Route::get('/usuarios/exportar', [UsuarioController::class, 'export'])->name('usuarios.export');
+                Route::get('/usuarios/plantilla', [UsuarioController::class, 'template'])->name('usuarios.template');
+                Route::get('/usuarios/{usuario}/edit', [UsuarioController::class, 'edit'])->name('usuarios.edit');
+                Route::put('/usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
+                Route::delete('/usuarios/{usuario}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
 
-    Route::get('/roles-permisos', function () {
-        $roles = \Spatie\Permission\Models\Role::with('permissions')
-            ->orderBy('name')
-            ->get();
+                Route::get('/roles-permisos', function () {
+                    $roles = Role::with('permissions')
+                        ->orderBy('name')
+                        ->get();
 
-        $permissions = \Spatie\Permission\Models\Permission::orderBy('name')->get();
+                    $permissions = Permission::orderBy('name')->get();
 
-        return view('administracion.roles.index', compact('roles', 'permissions'));
-    })->name('roles');
+                    return view('administracion.roles.index', compact('roles', 'permissions'));
+                })->name('roles');
 
-    Route::get('/configuracion-general', [SystemSettingController::class, 'edit'])->name('configuracion-general');
-    Route::put('/configuracion-general', [SystemSettingController::class, 'update'])->name('configuracion-general.update');
+                Route::get('/configuracion-general', [SystemSettingController::class, 'edit'])->name('configuracion-general');
+                Route::put('/configuracion-general', [SystemSettingController::class, 'update'])->name('configuracion-general.update');
 
-    Route::get('/auditoria', function () {
-        $audits = \Illuminate\Support\Facades\DB::table('audit_logs')
-            ->latest('created_at')
-            ->paginate(15);
+                Route::get('/auditoria', function () {
+                    $audits = DB::table('audit_logs')
+                        ->latest('created_at')
+                        ->paginate(15);
 
-        return view('administracion.auditoria.index', compact('audits'));
-    })->name('auditoria');
+                    return view('administracion.auditoria.index', compact('audits'));
+                })->name('auditoria');
 
-    Route::get('/backups', function () {
-        return view('administracion.backups.index');
-    })->name('backups');
-});
+                Route::get('/backups', function () {
+                    return view('administracion.backups.index');
+                })->name('backups');
+            });
         });
         Route::get('/exportar/{tipo}', ExportController::class)->middleware('can:exportar reportes')->name('export.csv');
-       
-});
+
+    });
 });

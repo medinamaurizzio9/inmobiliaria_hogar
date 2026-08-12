@@ -240,10 +240,12 @@ Obligatoria:
 Tipo:
 
 - [ ] porcentaje;
-- [ ] monto fijo;
-- [ ] configurable por operación.
+- [x] monto fijo;
+- [x] configurable por operación.
 
 Porcentaje mínimo:
+
+NO aplica: sin porcentaje obligatorio (ver F-4). Administrador o gerente define el monto.
 
 Monto mínimo:
 
@@ -272,9 +274,13 @@ Frecuencia predeterminada:
 
 Interés:
 
-- Habilitado:
+- Habilitado: `false`
 - Tipo:
 - Tasa predeterminada:
+
+NO calcular intereses durante la vida del crédito (ver F-2).
+
+El precio final pactado ya incorpora cualquier condición financiera o comercial.
 
 ---
 
@@ -288,6 +294,8 @@ Permitir descuentos:
 
 Máximo:
 
+`0%` — el vendedor NO modifica precio ni aplica descuentos (ver F-3).
+
 ### Supervisor
 
 Máximo:
@@ -299,9 +307,11 @@ Máximo:
 Descuentos superiores:
 
 - [ ] prohibidos;
-- [ ] requieren autorización especial.
+- [x] requieren autorización especial.
 
-Toda autorización debe quedar registrada.
+Gerente y administrador pueden autorizar descuentos (ver F-3).
+
+Toda autorización debe quedar registrada con usuario autorizador y fecha.
 
 ---
 
@@ -426,15 +436,19 @@ Requerir comprobante para:
 
 ### QR
 
-`true`
+`false`
 
 ### Transferencia
 
-`true`
+`false`
 
 ### Depósito
 
-`true`
+`false`
+
+NO exigir imagen/PDF del comprobante actualmente (ver F-17).
+
+El cliente registra monto, fecha, banco y número/referencia de transacción.
 
 ---
 
@@ -442,15 +456,20 @@ Requerir comprobante para:
 
 Confirmación automática:
 
-- Efectivo:
-- QR:
-- Transferencia:
+- Efectivo: `true` (pagos en oficina se confirman inmediatamente, ver F-22)
+- QR: `false`
+- Transferencia: `false`
 - Depósito:
 
 Roles autorizados para confirmar:
 
-- cashier
+- gerente
+- cajero
 - admin
+
+Pagos en oficina: gerente y cajero, se confirman inmediatamente (ver F-22).
+
+Los pagos QR/transferencia quedan `PENDIENTE_VERIFICACION` hasta confirmación de administración (ver F-18 y F-21).
 
 ---
 
@@ -804,3 +823,318 @@ NO implementar:
 if ($client->name === 'Empresa X') {
     // comportamiento especial
 }
+```
+---
+
+# REGLAS FINANCIERAS — HOGAR INMOBILIARIA
+
+> Sección oficial de reglas financieras del cliente.
+> Prevalece sobre los valores genéricos de las secciones anteriores cuando exista conflicto.
+
+## F-1. Modalidades de venta
+
+- `CONTADO`: pago total inmediato.
+- `SEMICONTADO`: cuota inicial + mensualidades. Cantidad máxima configurable desde administración.
+- `CREDITO`: cuota inicial + mensualidades. Cantidad máxima configurable desde administración.
+
+## F-2. Sin intereses durante la vida del crédito
+
+No calcular intereses durante la vida del crédito.
+
+El precio final pactado ya incorpora cualquier condición financiera o comercial.
+
+## F-3. Precio final
+
+- El sistema muestra precios comerciales.
+- El vendedor no puede cambiar el precio.
+- Gerente y administrador pueden autorizar descuentos.
+- Guardar: precio lista, descuento, precio final pactado, usuario autorizador y fecha.
+
+## F-4. Cuota inicial
+
+- No usar porcentaje obligatorio.
+- Administrador o gerente define el monto de la inicial.
+- Saldo financiado = precio final pactado - cuota inicial.
+
+## F-5. Mensualidad
+
+mensualidad = saldo financiado / plazo
+
+Si existe residuo por redondeo, la última cuota absorbe la diferencia.
+
+## F-6. Primera fecha de vencimiento
+
+La define administración al cerrar la venta.
+
+## F-7. Estados de cuota
+
+- PROXIMA
+- PENDIENTE
+- PARCIAL
+- VENCIDA
+- PAGADA
+- ANULADA
+
+## F-8. Pagos anticipados
+
+Permitidos.
+
+## F-9. Pago parcial
+
+Permitido.
+
+Mantener saldo pendiente de la misma cuota.
+
+## F-10. Pago superior a una cuota
+
+Si un pago supera una cuota, aplicar automáticamente el excedente a las siguientes
+cuotas del mismo terreno hasta consumir el monto.
+
+## F-11. Amortización extraordinaria
+
+- Aplicar directamente al saldo.
+- Mantener valor de mensualidad.
+- Reducir cantidad de cuotas restantes.
+- No calcular intereses.
+
+## F-12. Mora / recargos
+
+No aplicar por defecto.
+
+Debe quedar configurable desde administración para futuro uso.
+
+## F-13. Obligación financiera por terreno
+
+Cada terreno es una obligación financiera independiente.
+
+Un cliente puede tener varios terrenos, cada uno con:
+
+- venta;
+- plan;
+- cuotas;
+- pagos;
+- saldo;
+- documentos;
+- estado de cuenta.
+
+Todo independiente.
+
+## F-14. No combinar deudas
+
+No combinar deudas de terrenos diferentes automáticamente.
+
+## F-15. QR
+
+- Un único QR institucional.
+- Imagen fija.
+- Configurable desde administración.
+- Futuro soporte para API bancaria: fuera del alcance actual.
+
+## F-16. Transferencia
+
+- Una sola cuenta bancaria activa.
+- Configurable desde administración.
+
+## F-17. Pago QR / transferencia
+
+El cliente registra:
+
+- monto;
+- fecha;
+- banco;
+- número/referencia de transacción.
+
+No exigir imagen/PDF del comprobante actualmente.
+
+## F-18. Estados de pago
+
+- PENDIENTE_VERIFICACION
+- CONFIRMADO
+- RECHAZADO
+- ANULADO
+- DEVOLUCION
+
+## F-19. Pago pendiente de verificación
+
+Un pago pendiente de verificación NO reduce saldo.
+
+## F-20. Pago confirmado
+
+Solo un pago CONFIRMADO afecta cuotas y saldo.
+
+## F-21. Referencia incorrecta
+
+Si la referencia es incorrecta, administración puede RECHAZAR indicando motivo.
+
+## F-22. Pagos en oficina
+
+Roles autorizados:
+
+- gerente;
+- cajero.
+
+Se confirman inmediatamente.
+
+## F-23. Recibo PDF
+
+Todo pago confirmado genera recibo PDF numerado.
+
+## F-24. Contenido del recibo
+
+- cliente;
+- terreno;
+- monto;
+- método;
+- fecha;
+- saldo anterior;
+- pago;
+- saldo restante;
+- número de recibo.
+
+## F-25. Alertas al cliente
+
+Mostrar al iniciar sesión, 3 días antes del vencimiento.
+
+Mostrar también cuotas vencidas.
+
+## F-26. Portal cliente — por terreno
+
+Debe mostrar:
+
+- urbanización;
+- manzano;
+- lote;
+- precio pactado;
+- modalidad;
+- total pagado;
+- saldo;
+- próxima cuota;
+- fecha de vencimiento;
+- estado de cuenta.
+
+## F-27. Descargas del cliente
+
+El cliente puede descargar:
+
+- contrato;
+- recibos;
+- estado de cuenta;
+- documentos asociados al terreno.
+
+## F-28. Estado de cuenta
+
+Incluir:
+
+- fecha;
+- concepto;
+- número de cuota;
+- importe programado;
+- importe pagado;
+- método;
+- número de recibo;
+- estado;
+- saldo posterior.
+
+## F-29. Reportes gerenciales
+
+Filtros por:
+
+- cliente;
+- urbanización;
+- terreno;
+- vendedor;
+- rango de fechas;
+- modalidad de venta.
+
+Métricas:
+
+- precio pactado;
+- inicial;
+- total cobrado;
+- saldo;
+- cuotas pagadas;
+- cuotas pendientes;
+- cuotas vencidas;
+- devoluciones;
+- saldo retenido por la empresa.
+
+## F-30. Reporte de cartera
+
+- total vendido financiado;
+- total cobrado;
+- saldo por cobrar;
+- cartera al día;
+- cartera vencida.
+
+## F-31. Caja diaria
+
+Registrar cobros por:
+
+- efectivo;
+- QR;
+- transferencia;
+- usuario/cajero;
+- fecha.
+
+## F-32. Modificación de cuotas
+
+Solo administrador.
+
+- Motivo obligatorio.
+- Auditoría obligatoria.
+- No editar silenciosamente cuotas pagadas.
+
+## F-33. Reestructuración
+
+Permitida administrativamente.
+
+No editar cuotas históricas.
+
+Registrar:
+
+- saldo antes;
+- cuotas pendientes anteriores;
+- nuevo plazo;
+- nuevas cuotas;
+- fecha;
+- administrador;
+- observaciones.
+
+## F-34. Anulación / rescisión
+
+Marcar como devolución.
+
+Mantener historial de pagos.
+
+Registrar:
+
+- monto pagado;
+- monto devuelto;
+- monto retenido por la empresa;
+- motivo;
+- observaciones;
+- responsable.
+
+## F-35. Monto retenido en reportes
+
+El monto retenido por la empresa debe aparecer en reportes financieros.
+
+## F-36. Vendedores / asesores
+
+NO pueden ver deuda ni pagos.
+
+Solo:
+
+- administración;
+- caja;
+- gerencia.
+
+## F-37. Acceso cliente
+
+Al cerrar una venta, crear cuenta del cliente.
+
+- Usuario principal: correo electrónico.
+- Generar contraseña temporal segura aleatoria.
+- Obligar cambio de contraseña en el primer ingreso.
+- No usar el CI directamente como contraseña.
+

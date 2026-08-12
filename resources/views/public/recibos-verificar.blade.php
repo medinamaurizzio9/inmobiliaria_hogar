@@ -23,9 +23,26 @@
             <div class="receipt-status receipt-status-missing">RECIBO NO ENCONTRADO</div>
             <p class="muted">No existe un recibo registrado con el numero {{ $numero }}.</p>
         @else
-            @php($isAnnulled = $movimiento->estado === 'anulado')
-            <div @class(['receipt-status', 'receipt-status-valid' => ! $isAnnulled, 'receipt-status-annulled' => $isAnnulled])>
-                {{ $isAnnulled ? 'RECIBO ANULADO' : 'RECIBO VÁLIDO' }}
+            @php
+                $estado = $movimiento->estado;
+                $esValido = $estado === 'confirmado';
+                $esAnulado = $estado === 'anulado';
+                $esPendiente = $estado === 'pendiente_verificacion';
+                $esRechazado = $estado === 'rechazado';
+            @endphp
+            <div @class([
+                'receipt-status',
+                'receipt-status-valid' => $esValido,
+                'receipt-status-annulled' => $esAnulado,
+                'receipt-status-pending' => $esPendiente,
+                'receipt-status-rejected' => $esRechazado,
+            ])>
+                {{ match (true) {
+                    $esAnulado => 'RECIBO ANULADO',
+                    $esPendiente => 'PAGO EN VERIFICACIÓN',
+                    $esRechazado => 'PAGO RECHAZADO',
+                    default => 'RECIBO VÁLIDO',
+                } }}
             </div>
 
             <dl class="receipt-public-details">

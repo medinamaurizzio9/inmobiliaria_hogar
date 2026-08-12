@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Lote;
-use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +16,7 @@ class SaleService
         private CashMovementService $cashMovementService,
         private AuditService $auditService,
         private LotPricingService $pricingService
-    ) {
-    }
+    ) {}
 
     public function create(array $data, ?User $user): Venta
     {
@@ -31,7 +29,7 @@ class SaleService
                 $data['reserva_id'] = $reserva->id;
             }
 
-            $data = $this->applyCommercialPricing($data, $lote, true);
+            $data = $this->applyCommercialPricing($data, $lote, true, $user);
             $data['saldo_financiar'] = (int) ($data['numero_cuotas'] ?? 0) === 0
                 ? 0
                 : max(0, (float) $data['precio_final'] - (float) ($data['cuota_inicial'] ?? 0));
@@ -107,7 +105,7 @@ class SaleService
                 $this->lotService->ensureCanSell($newLot, (int) $data['cliente_id'], (bool) ($data['admin_confirma_reserva'] ?? false));
             }
 
-            $data = $this->applyCommercialPricing($data, $newLot, false);
+            $data = $this->applyCommercialPricing($data, $newLot, false, $user);
             $venta->update(collect($data)->except(['metodo_pago', 'referencia', 'admin_confirma_reserva', 'motivo_cambio'])->all());
             $installmentChanges = $changesInstallmentStructure
                 ? $this->installmentService->resyncForSale($venta->fresh())
@@ -152,16 +150,57 @@ class SaleService
         });
     }
 
-    private function applyCommercialPricing(array $data, Lote $lote, bool $forceAmounts): array
+    private function applyCommercialPricing(array $data, Lote $lote, bool $forceAmounts, ?User $user): array
     {
         $tipoOperacion = $data['tipo_operacion'] ?? ((int) ($data['numero_cuotas'] ?? 0) > 0 ? 'credito' : 'contado');
         $payload = $this->pricingService->payload($lote);
         $operationUsd = $this->pricingService->operationUsd($lote, $tipoOperacion);
         $initialUsd = $this->pricingService->initialUsd($lote, $operationUsd);
 
+        $descuento = array_key_exists('descuento', $data) ? (float) $data['descuento'] : 0.0;
+
+        if ($descuento < 0) {
+            throw ValidationException::withMessages(['descuento' => 'El descuento no puede ser negativo.']);
+        }
+
+        if ($descuento > 0) {
+            $autorizado = $user && ($user->hasRole('gerente') || $user->hasRole('administrador'));
+
+            if (! $autorizado) {
+                throw ValidationException::withMessages([
+                    'descuento' => 'Solo un gerente o administrador puede autorizar descuentos en una venta.',
+                ]);
+            }
+
+            $data['descuento_autorizado_por'] = $user->id;
+            $data['descuento_autorizado_en'] = now();
+        }
+
         if ($forceAmounts) {
-            $data['precio_final'] = $operationUsd;
+            $precioFinal = round($operationUsd - $descuento, 2);
+
+            if ($precioFinal < 0) {
+                throw ValidationException::withMessages([
+                    'descuento' => 'El descuento no puede superar el precio de la operacion.',
+                ]);
+            }
+
+            $data['descuento'] = $descuento;
+            $data['precio_final'] = $precioFinal;
             $data['cuota_inicial'] = $initialUsd;
+        } elseif (array_key_exists('descuento', $data)) {
+            $data['descuento'] = $descuento;
+
+            if ((float) ($data['precio_final'] ?? $operationUsd) < 0) {
+                throw ValidationException::withMessages([
+                    'precio_final' => 'El precio final no puede ser negativo.',
+                ]);
+            }
+
+            if ($descuento == 0) {
+                $data['descuento_autorizado_por'] = null;
+                $data['descuento_autorizado_en'] = null;
+            }
         }
 
         $data['tipo_operacion'] = $tipoOperacion;
@@ -169,7 +208,7 @@ class SaleService
         $data['incremento_credito_tipo'] = $payload['incremento_credito_tipo'];
         $data['incremento_credito_valor'] = $payload['incremento_credito_valor'];
         $data['incremento_credito_aplicado'] = $tipoOperacion === 'credito' ? $payload['credit_increment_usd'] : 0;
-        $data['precio_final_usd'] = $forceAmounts ? $operationUsd : (float) ($data['precio_final'] ?? $operationUsd);
+        $data['precio_final_usd'] = (float) ($data['precio_final'] ?? $operationUsd);
         $data['precio_final_bs'] = $this->pricingService->bs((float) $data['precio_final_usd'], $lote);
         $data['tipo_cambio_usd_bs'] = $payload['tipo_cambio_usd_bs'];
 

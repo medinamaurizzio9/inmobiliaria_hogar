@@ -29,6 +29,13 @@
         .conditions-title { margin-bottom: 7px; color: {{ $settings['secondary_color'] ?? '#0f2530' }}; font-size: 12px; font-weight: bold; }
         .conditions p { margin: 0 0 8px; text-align: justify; }
         .conditions p:last-child { margin-bottom: 0; }
+        .applications { width: 100%; margin-top: 16px; border-collapse: separate; border-spacing: 0; border: 1px solid #dce4e8; border-radius: 5px; overflow: hidden; }
+        .applications th { background: #f3f6f7; color: #4d5d64; }
+        .applications th, .applications td { padding: 6px 9px; border-bottom: 1px solid #e8edf0; text-align: left; }
+        .applications tr:last-child td { border-bottom: 0; }
+        .applications .num { width: 10%; }
+        .applications .date { width: 30%; }
+        .applications .total-label { font-weight: bold; }
         .qr-cell { width: 24%; padding: 10px; border-left: 1px solid #cbd9d6; text-align: center; vertical-align: middle; }
         .qr-cell img { display: block; width: 105px; height: 105px; margin: 0 auto 6px; }
         .qr-label { color: {{ $settings['secondary_color'] ?? '#0f2530' }}; font-size: 8px; font-weight: bold; }
@@ -76,6 +83,40 @@
     <div class="amount-label">Monto recibido</div>
     <div class="amount">Bs {{ number_format($movimiento->monto, 2) }}</div>
 </div>
+
+@if($movimiento->pagoAplicaciones->isNotEmpty())
+<table class="applications">
+    <thead>
+        <tr>
+            <th class="num">Cuota</th>
+            <th class="date">Vencimiento</th>
+            <th>Monto aplicado</th>
+        </tr>
+    </thead>
+    <tbody>
+        @php($totalAplicado = 0)
+        @foreach($movimiento->pagoAplicaciones as $aplicacion)
+            <tr>
+                <td>Cuota {{ $aplicacion->cuota?->numero ?? '-' }}</td>
+                <td>{{ $aplicacion->cuota?->fecha_vencimiento?->format('d/m/Y') ?? '-' }}</td>
+                <td>Bs {{ number_format((float) $aplicacion->monto_aplicado, 2) }}</td>
+            </tr>
+            @php($totalAplicado += (float) $aplicacion->monto_aplicado)
+        @endforeach
+        <tr>
+            <td colspan="2" class="total-label">Total aplicado</td>
+            <td class="total-label">Bs {{ number_format($totalAplicado, 2) }}</td>
+        </tr>
+    </tbody>
+</table>
+@endif
+
+@if(isset($saldoRestanteTerreno) && $saldoRestanteTerreno > 0)
+<div class="amount-box" style="border-left-color: {{ $settings['secondary_color'] ?? '#0f2530' }}; background: #f7faf9;">
+    <div class="amount-label">Saldo pendiente del terreno</div>
+    <div class="amount" style="color: {{ $settings['secondary_color'] ?? '#0f2530' }}; font-size: 16px;">Bs {{ number_format($saldoRestanteTerreno, 2) }}</div>
+</div>
+@endif
 
 @if($muestraCondiciones)
 <table class="bottom-block"><tr>

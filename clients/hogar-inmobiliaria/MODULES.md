@@ -58,3 +58,55 @@ Ejemplo:
 Clientes: enabled
 Comisiones: disabled
 Portal Cliente: planned
+```
+
+---
+
+# 3. Módulos de Hogar Inmobiliaria
+
+Estados vigentes para esta implementación.
+
+## 3.1. Módulos habilitados (enabled)
+
+- Clientes
+- Reservas
+- Ventas
+- Pagos
+- Cuotas
+- Caja
+- Reportes
+- Dashboard
+- Documentos
+- API
+- Alertas internas
+
+## 3.2. Módulos en desarrollo (development)
+
+- Portal del cliente
+- Estado de cuenta
+- Cartera
+- Reestructuración
+- Devoluciones
+
+## 3.3. Módulo funcional: CREDITOS / FINANCIAMIENTO
+
+Estado:
+
+`development`
+
+Dependencias:
+
+- Ventas
+- Pagos
+- Cuotas
+- Clientes
+- Documentos
+- Reportes
+
+Aclaración:
+
+Este módulo NO calcula intereses dinámicos.
+
+Administra modalidades de venta, plan de pagos, cobranza, saldos, cartera
+y portal financiero del cliente.
+

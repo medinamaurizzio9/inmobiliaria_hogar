@@ -6,10 +6,10 @@ use App\Models\CashMovement;
 use App\Models\Cliente;
 use App\Models\Reserva;
 use App\Models\Venta;
-use App\Support\UrbanizacionContext;
-use App\Services\ReservationVisibilityService;
 use App\Services\ReceiptQrService;
+use App\Services\ReservationVisibilityService;
 use App\Services\SystemSettingsService;
+use App\Support\UrbanizacionContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -105,6 +105,7 @@ class PdfController extends Controller
         if (! $request->user()->hasRole('cliente')) {
             abort_unless(UrbanizacionContext::cashMovementBelongsToCurrent($cashMovement), 403, 'No tienes acceso a esta urbanizacion');
         }
+        abort_unless($cashMovement->estado === 'confirmado', 422, 'Solo pagos confirmados tienen recibo.');
 
         $cashMovement->load([
             'cliente',
@@ -112,16 +113,22 @@ class PdfController extends Controller
             'reserva.lote.manzano.urbanizacion',
             'venta.lote.manzano.urbanizacion',
             'cuota.venta.lote.manzano.urbanizacion',
+            'pagoAplicaciones.cuota',
         ]);
         $lote = $cashMovement->reserva?->lote
             ?? $cashMovement->venta?->lote
             ?? $cashMovement->cuota?->venta?->lote;
+        $ventaPago = $cashMovement->venta ?? $cashMovement->cuota?->venta;
+        $saldoRestanteTerreno = $ventaPago
+            ? max(0.0, (float) $ventaPago->cuotas()->sum('saldo_pendiente'))
+            : 0.0;
 
         return Pdf::loadView('pdf.recibo', [
             'movimiento' => $cashMovement,
             'lote' => $lote,
             'qrDataUri' => $qrService->dataUri($cashMovement, $lote),
             'numeroRecibo' => $qrService->number($cashMovement),
+            'saldoRestanteTerreno' => $saldoRestanteTerreno,
             'settings' => $settings->all(),
         ])
             ->setPaper('a4')

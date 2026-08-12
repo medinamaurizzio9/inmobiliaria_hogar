@@ -91,6 +91,7 @@
                     <td>{{ $venta->cuotas->count() }}</td>
                     <td><span class="badge {{ $venta->estado }}">{{ $venta->estado }}</span></td>
                     <td class="actions">
+                        <a class="btn secondary" href="{{ route('ventas.show', $venta) }}">Ver</a>
                         @if(auth()->user()->hasRole('administrador') && auth()->user()->can('editar ventas') && ($venta->estado !== 'anulada' || auth()->user()->can('editar ventas anuladas')))
                             <a class="btn secondary" href="{{ route('ventas.edit', $venta) }}">Editar</a>
                         @endif

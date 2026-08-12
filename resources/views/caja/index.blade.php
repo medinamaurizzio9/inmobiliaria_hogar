@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $estadoLabels = \App\Models\CashMovement::ESTADO_LABELS;
+    $metodoLabels = \App\Models\CashMovement::METODO_LABELS;
+@endphp
 <div class="topbar">
     <h1 class="title">Caja</h1>
     @can('exportar reportes')
@@ -19,21 +23,16 @@
     </div>
 
     <div class="field">
-        <label for="tipo">Tipo</label>
-        <select id="tipo" name="tipo">
-            <option value="">Todos</option>
-            @foreach(['ingreso', 'egreso'] as $tipo)
-                <option value="{{ $tipo }}" @selected(($filters['tipo'] ?? '') === $tipo)>{{ ucfirst($tipo) }}</option>
-            @endforeach
-        </select>
+        <label for="cliente">Cliente</label>
+        <input id="cliente" name="cliente" value="{{ $filters['cliente'] ?? '' }}" placeholder="Nombre del cliente">
     </div>
 
     <div class="field">
-        <label for="concepto">Concepto</label>
-        <select id="concepto" name="concepto">
+        <label for="estado">Estado</label>
+        <select id="estado" name="estado">
             <option value="">Todos</option>
-            @foreach(['reserva', 'anticipo', 'cuota', 'contado', 'otro'] as $concepto)
-                <option value="{{ $concepto }}" @selected(($filters['concepto'] ?? '') === $concepto)>{{ ucfirst($concepto) }}</option>
+            @foreach(\App\Models\CashMovement::ESTADOS_PAGO as $estado)
+                <option value="{{ $estado }}" @selected(($filters['estado'] ?? '') === $estado)>{{ $estadoLabels[$estado] ?? ucfirst($estado) }}</option>
             @endforeach
         </select>
     </div>
@@ -42,18 +41,8 @@
         <label for="metodo_pago">Metodo</label>
         <select id="metodo_pago" name="metodo_pago">
             <option value="">Todos</option>
-            @foreach(['efectivo', 'QR', 'banco', 'transferencia', 'otro'] as $metodo)
-                <option value="{{ $metodo }}" @selected(($filters['metodo_pago'] ?? '') === $metodo)>{{ ucfirst($metodo) }}</option>
-            @endforeach
-        </select>
-    </div>
-
-    <div class="field">
-        <label for="estado">Estado</label>
-        <select id="estado" name="estado">
-            <option value="">Todos</option>
-            @foreach(['confirmado', 'anulado'] as $estado)
-                <option value="{{ $estado }}" @selected(($filters['estado'] ?? '') === $estado)>{{ ucfirst($estado) }}</option>
+            @foreach(\App\Models\CashMovement::METODOS as $metodo)
+                <option value="{{ $metodo }}" @selected(($filters['metodo_pago'] ?? '') === $metodo)>{{ $metodoLabels[$metodo] ?? ucfirst($metodo) }}</option>
             @endforeach
         </select>
     </div>
@@ -77,6 +66,86 @@
         </select>
     </div>
 
+    <details class="more-filters">
+        <summary>Mas filtros</summary>
+        <div class="more-filters-grid">
+            <div class="field">
+                <label for="documento">Documento</label>
+                <input id="documento" name="documento" value="{{ $filters['documento'] ?? '' }}" placeholder="CI o documento">
+            </div>
+
+            <div class="field">
+                <label for="referencia">Referencia</label>
+                <input id="referencia" name="referencia" value="{{ $filters['referencia'] ?? '' }}" placeholder="Numero de transaccion">
+            </div>
+
+            <div class="field">
+                <label for="urbanizacion_id">Urbanizacion</label>
+                <select id="urbanizacion_id" name="urbanizacion_id">
+                    <option value="">Todas</option>
+                    @foreach($urbanizaciones as $urbanizacion)
+                        <option value="{{ $urbanizacion->id }}" @selected((string) ($filters['urbanizacion_id'] ?? '') === (string) $urbanizacion->id)>{{ $urbanizacion->nombre }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="lote">Manzano / Lote</label>
+                <input id="lote" name="lote" value="{{ $filters['lote'] ?? '' }}" placeholder="Codigo de manzano o lote">
+            </div>
+
+            <div class="field">
+                <label for="modalidad">Modalidad</label>
+                <select id="modalidad" name="modalidad">
+                    <option value="">Todas</option>
+                    @foreach(\App\Models\CashMovement::MODALIDAD_LABELS as $modalidad => $label)
+                        <option value="{{ $modalidad }}" @selected(($filters['modalidad'] ?? '') === $modalidad)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="tipo">Tipo</label>
+                <select id="tipo" name="tipo">
+                    <option value="">Todos</option>
+                    @foreach(\App\Models\CashMovement::TIPOS as $tipo)
+                        <option value="{{ $tipo }}" @selected(($filters['tipo'] ?? '') === $tipo)>{{ ucfirst($tipo) }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="concepto">Concepto</label>
+                <select id="concepto" name="concepto">
+                    <option value="">Todos</option>
+                    @foreach(\App\Models\CashMovement::CONCEPTOS as $concepto)
+                        <option value="{{ $concepto }}" @selected(($filters['concepto'] ?? '') === $concepto)>{{ ucfirst($concepto) }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="monto_min">Monto minimo</label>
+                <input id="monto_min" type="number" step="0.01" min="0" name="monto_min" value="{{ $filters['monto_min'] ?? '' }}">
+            </div>
+
+            <div class="field">
+                <label for="monto_max">Monto maximo</label>
+                <input id="monto_max" type="number" step="0.01" min="0" name="monto_max" value="{{ $filters['monto_max'] ?? '' }}">
+            </div>
+
+            <div class="field">
+                <label for="usuario_id">Usuario / Cajero</label>
+                <select id="usuario_id" name="usuario_id">
+                    <option value="">Todos</option>
+                    @foreach($usuarios as $usuario)
+                        <option value="{{ $usuario->id }}" @selected((string) ($filters['usuario_id'] ?? '') === (string) $usuario->id)>{{ $usuario->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+    </details>
+
     <div class="filter-actions">
         <button class="btn" type="submit">Filtrar</button>
         <a class="btn secondary" href="{{ route('caja.index') }}">Limpiar</a>
@@ -96,6 +165,7 @@
                 <th>Tipo</th>
                 <th>Concepto</th>
                 <th>Metodo</th>
+                <th>Usuario</th>
                 <th>Referencia</th>
                 <th>Monto</th>
                 <th>Estado</th>
@@ -109,14 +179,31 @@
                     <td>{{ $movimiento->cliente?->nombre }}</td>
                     <td>{{ $movimiento->tipo }}</td>
                     <td>{{ $movimiento->concepto }}</td>
-                    <td>{{ $movimiento->metodo_pago }}</td>
+                    <td>{{ $metodoLabels[$movimiento->metodo_pago] ?? $movimiento->metodo_pago }}</td>
+                    <td>{{ $movimiento->user?->name }}</td>
                     <td>{{ $movimiento->referencia ?: '-' }}</td>
                     <td>{{ number_format($movimiento->monto, 2) }}</td>
-                    <td><span class="badge {{ $movimiento->estado }}">{{ $movimiento->estado }}</span></td>
+                    <td><span class="badge {{ $movimiento->estado }}">{{ $estadoLabels[$movimiento->estado] ?? $movimiento->estado }}</span></td>
                     <td class="actions">
-                        <a class="btn secondary" href="{{ route('pdf.recibo', $movimiento) }}" target="_blank" rel="noopener">Imprimir recibo</a>
+                        <a class="btn secondary" href="{{ route('caja.show', $movimiento) }}">Ver</a>
+                        @if($movimiento->estado === 'confirmado')
+                            <a class="btn secondary" href="{{ route('pdf.recibo', $movimiento) }}" target="_blank" rel="noopener">Imprimir recibo</a>
+                        @endif
+                        @if($movimiento->estado === 'pendiente_verificacion')
+                            @if(auth()->user()?->hasAnyRole(['administrador', 'gerente']))
+                                <form method="POST" action="{{ route('caja.confirm', $movimiento) }}" onsubmit="return confirm('Confirma que deseas verificar y confirmar este pago?')">
+                                    @csrf
+                                    <button class="btn success">Confirmar</button>
+                                </form>
+                                <form method="POST" action="{{ route('caja.reject', $movimiento) }}" onsubmit="const m = prompt('Motivo obligatorio del rechazo'); if(!m) return false; this.motivo.value=m; return confirm('Confirma que deseas rechazar este pago?');">
+                                    @csrf
+                                    <input type="hidden" name="motivo">
+                                    <button class="btn danger">Rechazar</button>
+                                </form>
+                            @endif
+                        @endif
                         @can('anular caja')
-                            @if($movimiento->estado !== 'anulado')
+                            @if($movimiento->estado === 'confirmado')
                                 <form method="POST" action="{{ route('caja.annul', $movimiento) }}" onsubmit="const m = prompt('Motivo obligatorio de anulacion'); if(!m) return false; this.motivo.value=m; return confirm('Confirma que deseas anular este movimiento de caja?');">
                                     @csrf
                                     <input type="hidden" name="motivo">
@@ -128,7 +215,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" class="empty-table">No se encontraron movimientos con los filtros aplicados.</td>
+                    <td colspan="10" class="empty-table">No se encontraron movimientos con los filtros aplicados.</td>
                 </tr>
             @endforelse
         </tbody>

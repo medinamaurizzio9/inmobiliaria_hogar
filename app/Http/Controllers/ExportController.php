@@ -99,27 +99,18 @@ class ExportController extends Controller
             ->latest();
     }
 
+    private const FILTROS_CAJA = [
+        'q', 'cliente', 'documento', 'referencia', 'lote', 'modalidad',
+        'tipo', 'concepto', 'metodo_pago', 'estado',
+        'fecha_desde', 'fecha_hasta', 'monto_min', 'monto_max', 'usuario_id',
+    ];
+
     private function filteredCaja(Builder $query): Builder
     {
-        $search = trim((string) request('q', ''));
+        $urbanizacionId = UrbanizacionContext::filtroUrbanizacion(request()->user(), request('urbanizacion_id', ''));
 
-        return UrbanizacionContext::cashMovements($query)
-            ->when($search !== '', function (Builder $builder) use ($search): void {
-                $builder->where(function (Builder $nested) use ($search): void {
-                    $nested->where('concepto', 'like', "%{$search}%")
-                        ->orWhere('referencia', 'like', "%{$search}%")
-                        ->orWhereHas('cliente', function (Builder $clienteQuery) use ($search): void {
-                            $clienteQuery->where('nombre', 'like', "%{$search}%")
-                                ->orWhere('documento', 'like', "%{$search}%");
-                        });
-                });
-            })
-            ->when(request()->filled('tipo'), fn (Builder $builder) => $builder->where('tipo', request('tipo')))
-            ->when(request()->filled('concepto'), fn (Builder $builder) => $builder->where('concepto', request('concepto')))
-            ->when(request()->filled('metodo_pago'), fn (Builder $builder) => $builder->where('metodo_pago', request('metodo_pago')))
-            ->when(request()->filled('estado'), fn (Builder $builder) => $builder->where('estado', request('estado')))
-            ->when(request()->filled('fecha_desde'), fn (Builder $builder) => $builder->whereDate('fecha', '>=', request('fecha_desde')))
-            ->when(request()->filled('fecha_hasta'), fn (Builder $builder) => $builder->whereDate('fecha', '<=', request('fecha_hasta')))
+        return UrbanizacionContext::cashMovements($query, $urbanizacionId)
+            ->filtered(request()->only(self::FILTROS_CAJA))
             ->latest();
     }
 }

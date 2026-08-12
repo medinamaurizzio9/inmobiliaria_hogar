@@ -5,35 +5,56 @@ namespace App\Services;
 use App\Models\Cuota;
 use App\Models\User;
 use App\Models\Venta;
+use App\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class InstallmentService
 {
-    public function __construct(private CashMovementService $cashMovementService, private AuditService $auditService)
+    public function __construct(
+        private CashMovementService $cashMovementService,
+        private AuditService $auditService,
+        private PaymentAllocationService $allocationService
+    ) {}
+
+    private function fechaCuota(Venta $venta, int $numero): string
     {
+        if ($venta->fecha_primer_vencimiento) {
+            $base = Carbon::parse($venta->fecha_primer_vencimiento);
+            $fecha = $base->copy()->addMonthsNoOverflow($numero - 1);
+
+            return $base->isLastOfMonth()
+                ? $fecha->endOfMonth()->toDateString()
+                : $fecha->toDateString();
+        }
+
+        return Carbon::parse($venta->fecha_venta)->addMonths($numero)->toDateString();
     }
 
     public function generateForSale(Venta $venta): void
     {
-        if ($venta->numero_cuotas < 1) {
+        $numeroCuotas = (int) $venta->numero_cuotas;
+
+        if ($numeroCuotas < 1) {
             return;
         }
 
-        $saldo = max(0, (float) $venta->precio_final - (float) $venta->cuota_inicial);
-        $monto = round($saldo / $venta->numero_cuotas, 2);
-        $fechaBase = Carbon::parse($venta->fecha_venta);
+        $saldoCentavos = max(0, Money::toCents($venta->precio_final) - Money::toCents($venta->cuota_inicial));
+        $montos = Money::distribute($saldoCentavos, $numeroCuotas);
 
-        for ($i = 1; $i <= $venta->numero_cuotas; $i++) {
+        for ($i = 0; $i < $numeroCuotas; $i++) {
+            $numero = $i + 1;
+            $fecha = $this->fechaCuota($venta, $numero);
+
             Cuota::create([
                 'venta_id' => $venta->id,
-                'numero' => $i,
-                'fecha_programada' => $fechaBase->copy()->addMonths($i),
-                'fecha_vencimiento' => $fechaBase->copy()->addMonths($i),
-                'monto' => $monto,
+                'numero' => $numero,
+                'fecha_programada' => $fecha,
+                'fecha_vencimiento' => $fecha,
+                'monto' => $montos[$i],
                 'monto_pagado' => 0,
-                'saldo_pendiente' => $monto,
+                'saldo_pendiente' => $montos[$i],
                 'estado' => 'pendiente',
             ]);
         }
@@ -80,7 +101,6 @@ class InstallmentService
             $baseAmount = round($balanceToGenerate / $pendingCount, 2);
             $distributed = 0.0;
             $nextNumber = max(0, (int) $preserved->max('numero'));
-            $fechaBase = Carbon::parse($venta->fecha_venta);
 
             for ($i = 1; $i <= $pendingCount; $i++) {
                 $number = $nextNumber + $i;
@@ -88,12 +108,13 @@ class InstallmentService
                     ? round($balanceToGenerate - $distributed, 2)
                     : $baseAmount;
                 $distributed += $amount;
+                $fecha = $this->fechaCuota($venta, $number);
 
                 $cuota = Cuota::create([
                     'venta_id' => $venta->id,
                     'numero' => $number,
-                    'fecha_programada' => $fechaBase->copy()->addMonths($number),
-                    'fecha_vencimiento' => $fechaBase->copy()->addMonths($number),
+                    'fecha_programada' => $fecha,
+                    'fecha_vencimiento' => $fecha,
                     'monto' => $amount,
                     'monto_pagado' => 0,
                     'saldo_pendiente' => $amount,
@@ -121,23 +142,8 @@ class InstallmentService
         }
 
         return DB::transaction(function () use ($cuota, $monto, $metodoPago, $user, $referencia): Cuota {
-            $cuota->refresh();
-            $nuevoPagado = round((float) $cuota->monto_pagado + $monto, 2);
-
-            if ($nuevoPagado > (float) $cuota->monto) {
-                throw ValidationException::withMessages(['monto_pagado' => 'El pago supera el saldo pendiente de la cuota.']);
-            }
-
-            $saldo = round((float) $cuota->monto - $nuevoPagado, 2);
-            $cuota->update([
-                'monto_pagado' => $nuevoPagado,
-                'saldo_pendiente' => $saldo,
-                'fecha_pago' => $saldo <= 0 ? now() : $cuota->fecha_pago,
-                'estado' => $saldo <= 0 ? 'pagada' : 'parcial',
-            ]);
-            $this->auditService->log($cuota, 'cobrar_cuota', 'Pago de cuota registrado.', null, $cuota->fresh()->toArray());
-
-            $this->cashMovementService->ingresoCuota($cuota, $monto, $metodoPago, $user, $referencia);
+            $movement = $this->cashMovementService->ingresoCuota($cuota, $monto, $metodoPago, $user, $referencia);
+            $this->allocationService->allocate($movement, $cuota, $user);
 
             return $cuota;
         });

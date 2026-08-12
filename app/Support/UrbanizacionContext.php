@@ -40,9 +40,20 @@ class UrbanizacionContext
         return $query->get();
     }
 
+    public static function filtroUrbanizacion(?User $user, mixed $valor): ?int
+    {
+        if ($user === null || ! is_numeric($valor) || (int) $valor <= 0) {
+            return null;
+        }
+
+        $id = (int) $valor;
+
+        return self::accessibleUrbanizaciones($user)->pluck('id')->contains($id) ? $id : null;
+    }
+
     public static function userCanAccess(User $user, int $urbanizacionId): bool
     {
-        if ($user->hasAnyRole(['super administrador', 'administrador', 'gerente'])) {
+        if ($user->hasAnyRole(['super administrador', 'administrador', 'gerente', 'cajero'])) {
             return Urbanizacion::whereKey($urbanizacionId)->where('estado', 'activa')->exists();
         }
 

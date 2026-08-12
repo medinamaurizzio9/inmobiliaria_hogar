@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cuota extends Model
 {
@@ -37,5 +38,10 @@ class Cuota extends Model
     public function cashMovements()
     {
         return $this->hasMany(CashMovement::class, 'installment_id');
+    }
+
+    public function pagoAplicaciones(): HasMany
+    {
+        return $this->hasMany(PagoAplicacion::class);
     }
 }

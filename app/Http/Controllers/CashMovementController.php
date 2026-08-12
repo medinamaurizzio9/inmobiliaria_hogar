@@ -3,44 +3,35 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashMovement;
+use App\Models\User;
 use App\Services\CashMovementService;
 use App\Support\UrbanizacionContext;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CashMovementController extends Controller
 {
+    private const FILTROS = [
+        'q', 'cliente', 'documento', 'referencia', 'lote', 'modalidad',
+        'tipo', 'concepto', 'metodo_pago', 'estado',
+        'fecha_desde', 'fecha_hasta', 'monto_min', 'monto_max', 'usuario_id',
+    ];
+
     public function index(Request $request): View
     {
-        abort_unless(request()->user()->hasAnyRole(['administrador', 'gerente']), 403, 'No tienes permiso para ver Caja.');
+        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente', 'cajero']), 403, 'No tienes permiso para ver Caja.');
 
         $perPage = $this->perPage($request);
-        $search = trim((string) $request->query('q', ''));
-        $tipo = (string) $request->query('tipo', '');
-        $concepto = (string) $request->query('concepto', '');
-        $metodo = (string) $request->query('metodo_pago', '');
-        $estado = (string) $request->query('estado', '');
-        $fechaDesde = (string) $request->query('fecha_desde', '');
-        $fechaHasta = (string) $request->query('fecha_hasta', '');
+        $filtros = $request->only(self::FILTROS);
+        $urbanizacionId = UrbanizacionContext::filtroUrbanizacion($request->user(), $request->query('urbanizacion_id', ''));
 
-        $movimientos = UrbanizacionContext::cashMovements(CashMovement::with('cliente', 'venta', 'reserva', 'cuota'))
-            ->when($search !== '', function ($query) use ($search): void {
-                $query->where(function ($nested) use ($search): void {
-                    $nested->where('concepto', 'like', "%{$search}%")
-                        ->orWhere('referencia', 'like', "%{$search}%")
-                        ->orWhereHas('cliente', function ($clienteQuery) use ($search): void {
-                            $clienteQuery->where('nombre', 'like', "%{$search}%")
-                                ->orWhere('documento', 'like', "%{$search}%");
-                        });
-                });
-            })
-            ->when($tipo !== '', fn ($query) => $query->where('tipo', $tipo))
-            ->when($concepto !== '', fn ($query) => $query->where('concepto', $concepto))
-            ->when($metodo !== '', fn ($query) => $query->where('metodo_pago', $metodo))
-            ->when($estado !== '', fn ($query) => $query->where('estado', $estado))
-            ->when($fechaDesde !== '', fn ($query) => $query->whereDate('fecha', '>=', $fechaDesde))
-            ->when($fechaHasta !== '', fn ($query) => $query->whereDate('fecha', '<=', $fechaHasta))
+        $movimientos = UrbanizacionContext::cashMovements(
+            CashMovement::with('cliente', 'venta', 'reserva', 'cuota', 'user'),
+            $urbanizacionId
+        )
+            ->filtered($filtros)
             ->latest()
             ->paginate($perPage)
             ->appends($request->query());
@@ -48,19 +39,16 @@ class CashMovementController extends Controller
         return view('caja.index', [
             'movimientos' => $movimientos,
             'filters' => [
-                'q' => $search,
-                'tipo' => $tipo,
-                'concepto' => $concepto,
-                'metodo_pago' => $metodo,
-                'estado' => $estado,
-                'fecha_desde' => $fechaDesde,
-                'fecha_hasta' => $fechaHasta,
+                ...$filtros,
+                'urbanizacion_id' => $urbanizacionId ? (string) $urbanizacionId : '',
                 'per_page' => $perPage,
             ],
+            'urbanizaciones' => UrbanizacionContext::accessibleUrbanizaciones($request->user()),
+            'usuarios' => $this->usuariosCaja($urbanizacionId),
         ]);
     }
 
-    public function annul(\Illuminate\Http\Request $request, CashMovement $cashMovement, CashMovementService $cashMovementService): RedirectResponse
+    public function annul(Request $request, CashMovement $cashMovement, CashMovementService $cashMovementService): RedirectResponse
     {
         abort_unless(UrbanizacionContext::cashMovementBelongsToCurrent($cashMovement), 403, 'No tienes acceso a esta urbanizacion');
 
@@ -70,10 +58,59 @@ class CashMovementController extends Controller
         return back()->with('status', 'Movimiento de caja anulado.');
     }
 
+    public function show(Request $request, CashMovement $cashMovement): View
+    {
+        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente', 'cajero']), 403, 'No tienes permiso para ver Caja.');
+        abort_unless(UrbanizacionContext::cashMovementBelongsToCurrent($cashMovement), 403, 'No tienes acceso a esta urbanizacion');
+
+        $cashMovement->load([
+            'cliente',
+            'user',
+            'confirmador',
+            'reserva.lote.manzano.urbanizacion',
+            'venta.lote.manzano.urbanizacion',
+            'cuota.venta.lote.manzano.urbanizacion',
+            'pagoAplicaciones.cuota',
+        ]);
+
+        return view('caja.show', ['movimiento' => $cashMovement]);
+    }
+
+    public function confirm(Request $request, CashMovement $cashMovement, CashMovementService $cashMovementService): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente']), 403, 'No tienes permiso para confirmar pagos.');
+        abort_unless(UrbanizacionContext::cashMovementBelongsToCurrent($cashMovement), 403, 'No tienes acceso a esta urbanizacion');
+
+        $cashMovementService->confirm($cashMovement, $request->user());
+
+        return redirect()->route('caja.index', $request->query())->with('status', 'Pago verificado y confirmado.');
+    }
+
+    public function reject(Request $request, CashMovement $cashMovement, CashMovementService $cashMovementService): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente']), 403, 'No tienes permiso para rechazar pagos.');
+        abort_unless(UrbanizacionContext::cashMovementBelongsToCurrent($cashMovement), 403, 'No tienes acceso a esta urbanizacion');
+
+        $data = $request->validate(['motivo' => ['required', 'string', 'max:500']]);
+        $cashMovementService->reject($cashMovement, $data['motivo'], $request->user());
+
+        return redirect()->route('caja.index', $request->query())->with('status', 'Pago rechazado.');
+    }
+
     private function perPage(Request $request): int
     {
         $perPage = $request->integer('per_page', 15);
 
         return in_array($perPage, [15, 30, 50, 100], true) ? $perPage : 15;
+    }
+
+    private function usuariosCaja(?int $urbanizacionId): Collection
+    {
+        $ids = UrbanizacionContext::cashMovements(CashMovement::query(), $urbanizacionId)
+            ->whereNotNull('user_id')
+            ->distinct()
+            ->pluck('user_id');
+
+        return User::query()->whereIn('id', $ids)->orderBy('name')->get();
     }
 }

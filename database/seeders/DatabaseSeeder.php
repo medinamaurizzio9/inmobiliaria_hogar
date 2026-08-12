@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Asesor;
+use App\Models\AuditLog;
 use App\Models\CashMovement;
 use App\Models\Cliente;
 use App\Models\Cuota;
@@ -14,8 +16,6 @@ use App\Models\SupervisorProfile;
 use App\Models\Urbanizacion;
 use App\Models\User;
 use App\Models\Venta;
-use App\Models\AuditLog;
-use App\Models\Asesor;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Permission;
@@ -87,12 +87,23 @@ class DatabaseSeeder extends Seeder
         $gerente = Role::firstOrCreate(['name' => 'gerente', 'guard_name' => 'web']);
         $supervisor = Role::firstOrCreate(['name' => 'supervisor', 'guard_name' => 'web']);
         $vendedor = Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web']);
+        $cajero = Role::firstOrCreate(['name' => 'cajero', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'cliente', 'guard_name' => 'web']);
+
+        $cajero->syncPermissions([
+            'ver dashboard',
+            'ver lotes',
+            'ver clientes',
+            'cobrar cuotas',
+            'ver recibo reserva',
+            'descargar recibo reserva',
+            'imprimir recibo reserva',
+        ]);
 
         $administrador->syncPermissions($permissions);
         $gerente->syncPermissions(['ver dashboard', 'ver lotes', 'ver clientes', 'ver ventas', 'ver reservas', 'crear lotes', 'editar lotes', 'crear clientes', 'editar clientes', 'crear ventas', 'editar ventas', 'anular ventas', 'crear reservas', 'cancelar reservas', 'cobrar cuotas', 'anular caja', 'ver reportes', 'exportar reportes', 'ver reporte reservas', 'exportar reporte reservas', 'ver reporte mejor vendedor', 'exportar reporte mejor vendedor']);
-        $supervisor->syncPermissions(['ver dashboard', 'ver lotes', 'ver clientes', 'ver ventas', 'ver reservas', 'ver reservas equipo', 'crear clientes', 'editar clientes', 'crear ventas', 'crear reservas', 'cancelar reservas', 'ver recibo reserva', 'descargar recibo reserva', 'imprimir recibo reserva', 'cobrar cuotas', 'crear asesores', 'editar asesores', 'desactivar asesores', 'asignar urbanizaciones a asesores', 'resetear contraseña asesor']);
-        $vendedor->syncPermissions(['ver dashboard', 'ver lotes', 'ver clientes', 'ver reservas', 'crear clientes', 'editar clientes', 'crear reservas', 'ver recibo reserva', 'descargar recibo reserva', 'imprimir recibo reserva', 'cobrar cuotas']);
+        $supervisor->syncPermissions(['ver dashboard', 'ver lotes', 'ver clientes', 'ver ventas', 'ver reservas', 'ver reservas equipo', 'crear clientes', 'editar clientes', 'crear ventas', 'crear reservas', 'cancelar reservas', 'ver recibo reserva', 'descargar recibo reserva', 'imprimir recibo reserva', 'crear asesores', 'editar asesores', 'desactivar asesores', 'asignar urbanizaciones a asesores', 'resetear contraseña asesor']);
+        $vendedor->syncPermissions(['ver dashboard', 'ver lotes', 'ver clientes', 'ver reservas', 'crear clientes', 'editar clientes', 'crear reservas', 'ver recibo reserva', 'descargar recibo reserva', 'imprimir recibo reserva']);
         $supervisor->givePermissionTo(['ver reportes', 'ver reporte reservas', 'exportar reporte reservas']);
 
         $admin = User::factory()->create(['name' => 'Administrador Impacto', 'email' => 'admin@impacto.test']);
@@ -112,6 +123,7 @@ class DatabaseSeeder extends Seeder
         SupervisorProfile::create(['user_id' => $supervisorDemo->id, 'nombre' => 'Supervisor Comercial', 'ci' => 'SUP-100', 'celular' => '70000001', 'email' => 'supervisor@impacto.test', 'direccion' => 'Oficina central', 'activo' => true]);
         $vendedorDemo = User::factory()->create(['name' => 'Asesor de Ventas', 'email' => 'vendedor@impacto.test']);
         $vendedorDemo->assignRole('vendedor');
+        User::factory()->create(['name' => 'Cajero Oficina', 'email' => 'cajero@impacto.test'])->assignRole('cajero');
         $grupoNorte = GrupoComercial::create(['nombre' => 'Grupo Norte', 'descripcion' => 'Equipo comercial zona norte.', 'supervisor_id' => $supervisorDemo->id, 'activo' => true]);
         GrupoComercial::create(['nombre' => 'Grupo Sur', 'descripcion' => 'Equipo comercial zona sur.', 'supervisor_id' => $supervisorDemo->id, 'activo' => true]);
         GrupoComercial::create(['nombre' => 'Grupo Centro', 'descripcion' => 'Equipo comercial zona centro.', 'supervisor_id' => $supervisorDemo->id, 'activo' => true]);
