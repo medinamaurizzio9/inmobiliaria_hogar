@@ -121,7 +121,7 @@ Esta sección es la principal referencia para continuar el desarrollo.
 
 Título:
 
-Fase 2.2 — Reestructuración administrativa F-33 y devoluciones/rescisiones F-34/F-35.
+Fase 3 — Creación automática de cuenta cliente y Portal Financiero.
 
 Prioridad:
 
@@ -133,9 +133,8 @@ Estado:
 
 Objetivo:
 
-Diseñar e implementar reestructuraciones sin editar cuotas históricas y el
-flujo trazable de devolución/rescisión, incluyendo monto pagado, devuelto y
-retenido para reportes financieros.
+Crear automáticamente la cuenta vinculada al cliente y habilitar el Portal
+Financiero con acceso seguro a su estado de cuenta, cuotas y pagos.
 
 Archivos probablemente involucrados:
 
@@ -161,12 +160,11 @@ Agregar únicamente los documentos CORE necesarios.
 
 La tarea estará terminada cuando:
 
-- [ ] cuotas históricas preservadas;
-- [ ] reestructuración registra antes/después, administrador y motivo;
-- [ ] rescisión conserva pagos y registra devolución/retención;
-- [ ] monto retenido aparece en reportes;
-- [ ] pruebas correspondientes pasan;
-- [ ] no existen regresiones conocidas.
+- [ ] cuenta cliente creada y vinculada sin duplicados;
+- [ ] acceso aislado a la información financiera propia;
+- [ ] cuotas, pagos y saldo visibles;
+- [ ] autorización backend verificada;
+- [ ] pruebas correspondientes pasan.
 
 ---
 
@@ -176,60 +174,58 @@ La tarea estará terminada cuando:
 
 Título:
 
-Fase 2.1 — Configuración financiera administrativa.
+Fase 2.2 — Reestructuración administrativa y devoluciones/rescisiones.
 
 Fecha:
 
-2026-08-11
+2026-08-12
 
 Resultado:
 
 Implementado y verificado con tests:
 
-- Pantalla única `Configuración financiera`: administrador modifica, gerente
-  consulta; cajero, supervisor, vendedor y cliente no modifican.
-- QR institucional global con imagen en Storage público, descripción y estado.
-- Cuenta bancaria institucional global con banco, titular, cuenta, tipo,
-  moneda, instrucciones y estado, sin integración bancaria.
-- `dias_aviso_vencimiento` global (default 3, rango 0..30).
-- Alertas calculadas `proxima_vencer`/`vencida` sin agregar estados a cuotas;
-  excluyen pagadas y preservan el saldo real de cuotas parciales.
-- Mora configurable y deshabilitada por defecto. No existe cálculo automático
-  ni modificación de capital, cuota o saldo contractual.
-- Límites de semicontado/crédito integrados en la misma pantalla y conservados
-  por urbanización.
-- `paymentInstructions()` expone solo QR y cuenta activos, sin parámetros
-  administrativos.
-- Cambios auditados con usuario y valores anteriores/nuevos.
+- Reestructuración exclusiva de administrador para crédito y semicontado con
+  saldo real, snapshots antes/después, motivo, responsable y nuevo vencimiento.
+- Cuotas pagadas y aplicaciones históricas intactas; cuotas activas anteriores
+  anuladas sin borrado y pagos parciales preservados.
+- Nuevo plan exacto con `Money`, sin intereses ni cambios al precio/descuento;
+  la última cuota absorbe el residuo.
+- Rescisión transaccional exclusiva de administrador con bloqueo de venta/lote,
+  preservación de pagos, aplicaciones y cuotas, y cancelación de deuda activa.
+- Registro de total pagado confirmado, monto devuelto y monto retenido. Solo el
+  monto devuelto genera egreso de caja con concepto `devolucion`.
+- Venta anulada y lote sincronizado con operaciones vigentes.
+- Historial visible, métricas de devolución/retención y auditoría de ambas acciones.
 
 Nota: sin commit ni push, en rama `hogar-inmobiliaria`.
 
 Archivos principales modificados:
 
-- `app/Services/FinancialSettingsService.php`
-- `app/Services/PaymentAlertService.php`
-- `app/Services/CommercialSettingsService.php`
-- `app/Http/Controllers/FinancialSettingController.php`
-- `resources/views/admin/configuracion-financiera.blade.php`
-- `resources/views/layouts/partials/sidebar.blade.php`
+- `app/Services/DebtRestructuringService.php`
+- `app/Services/SaleRescissionService.php`
+- `app/Http/Controllers/ReestructuracionController.php`
+- `app/Http/Controllers/DevolucionController.php`
+- `app/Models/Reestructuracion.php`
+- `app/Models/Devolucion.php`
+- `resources/views/ventas/reestructurar.blade.php`
+- `resources/views/ventas/rescindir.blade.php`
+- `resources/views/ventas/show.blade.php`
 - `routes/web.php`
-- `tests/Feature/FinancialSettingsTest.php`
+- `tests/Feature/FinancialRestructuringAndRefundTest.php`
 
 Migraciones:
 
-- Ninguna nueva en Fase 2.1. Se reutilizó `system_settings` para parámetros
-  globales y la configuración comercial existente para límites por urbanización.
-- La migración pendiente de la fase anterior continúa sujeta a disponibilidad
-  de MySQL local.
+- `2026_08_12_000002_create_reestructuraciones_and_devoluciones_tables.php`,
+  aplicada correctamente en MySQL `hogar_inmobiliaria`.
 
 Pruebas ejecutadas:
 
 ```bash
-php artisan test tests/Feature/FinancialSettingsTest.php tests/Feature/CommercialSettingsPerUrbanizacionTest.php tests/Feature/SemicontadoVentaTest.php tests/Feature/PagoVerificacionTest.php tests/Feature/PagoAplicacionesTest.php tests/Feature/StabilityAuditTest.php tests/Feature/SystemConfigurationAndCommercialStructureTest.php
-# 146 passed, 427 assertions
+php artisan test tests/Feature/FinancialRestructuringAndRefundTest.php
+# 10 passed, 42 assertions
 php artisan test
-# 451 passed, 1691 assertions
+# 461 passed, 1733 assertions
 ```
 
-Pendiente (siguiente tarea): Fase 2.2 — Reestructuración administrativa F-33
-y devoluciones/rescisiones F-34/F-35.
+Pendiente (siguiente tarea): Fase 3 — Creación automática de cuenta cliente y
+Portal Financiero.

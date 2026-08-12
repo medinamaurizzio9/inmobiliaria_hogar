@@ -88,6 +88,16 @@ class Venta extends Model
         return $this->hasMany(CashMovement::class, 'sale_id');
     }
 
+    public function reestructuraciones(): HasMany
+    {
+        return $this->hasMany(Reestructuracion::class);
+    }
+
+    public function devoluciones(): HasMany
+    {
+        return $this->hasMany(Devolucion::class);
+    }
+
     public function saldo(): float
     {
         return (float) $this->saldo_financiar;

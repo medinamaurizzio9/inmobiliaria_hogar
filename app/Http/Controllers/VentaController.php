@@ -6,8 +6,8 @@ use App\Http\Requests\StoreVentaRequest;
 use App\Models\Cliente;
 use App\Models\Lote;
 use App\Models\Venta;
-use App\Services\SaleService;
 use App\Services\CommercialSettingsService;
+use App\Services\SaleService;
 use App\Support\UrbanizacionContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -60,7 +60,7 @@ class VentaController extends Controller
     {
         abort_unless(UrbanizacionContext::ventaBelongsToCurrent($venta), 403, 'No tienes acceso a esta urbanizacion');
 
-        $venta->load('cliente', 'lote.manzano.urbanizacion', 'cuotas', 'descuentoAutorizador');
+        $venta->load('cliente', 'lote.manzano.urbanizacion', 'cuotas.pagoAplicaciones', 'cashMovements', 'descuentoAutorizador', 'reestructuraciones.administrador', 'devoluciones.responsable', 'devoluciones.cashMovements');
 
         return view('ventas.show', [
             'venta' => $venta,

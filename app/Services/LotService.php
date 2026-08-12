@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\LotHistory;
 use App\Models\Lote;
+use App\Models\LotHistory;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
@@ -47,10 +47,6 @@ class LotService
                 $this->changeStatus($lote, 'vendido', $accion, $user, $descripcion ?? 'Lote con venta activa.');
             }
 
-            return;
-        }
-
-        if ($lote->estado === 'vendido') {
             return;
         }
 

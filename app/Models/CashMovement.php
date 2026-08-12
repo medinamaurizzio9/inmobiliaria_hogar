@@ -11,7 +11,7 @@ class CashMovement extends Model
 {
     public const TIPOS = ['ingreso', 'egreso'];
 
-    public const CONCEPTOS = ['reserva', 'anticipo', 'contado', 'cuota', 'amortizacion', 'ajuste'];
+    public const CONCEPTOS = ['reserva', 'anticipo', 'contado', 'cuota', 'amortizacion', 'ajuste', 'devolucion'];
 
     public const METODOS = ['efectivo', 'transferencia', 'QR', 'banco', 'otro'];
 
@@ -49,6 +49,7 @@ class CashMovement extends Model
         'sale_id',
         'reservation_id',
         'installment_id',
+        'devolucion_id',
         'tipo',
         'concepto',
         'metodo_pago',
@@ -94,6 +95,11 @@ class CashMovement extends Model
     public function cuota(): BelongsTo
     {
         return $this->belongsTo(Cuota::class, 'installment_id');
+    }
+
+    public function devolucion(): BelongsTo
+    {
+        return $this->belongsTo(Devolucion::class);
     }
 
     public function confirmador(): BelongsTo

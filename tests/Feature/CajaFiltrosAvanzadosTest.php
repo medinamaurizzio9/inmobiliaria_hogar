@@ -111,7 +111,7 @@ class CajaFiltrosAvanzadosTest extends TestCase
             ->assertSee('Confirmado')
             ->assertSee('Rechazado')
             ->assertSee('Anulado')
-            ->assertDontSee('Devolucion')
+            ->assertSee('Devolucion')
             ->assertSee('Efectivo')
             ->assertSee('Transferencia')
             ->assertSee('Banco');

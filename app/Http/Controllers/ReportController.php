@@ -6,6 +6,7 @@ use App\Models\Asesor;
 use App\Models\CashMovement;
 use App\Models\Cliente;
 use App\Models\Cuota;
+use App\Models\Devolucion;
 use App\Models\GrupoComercial;
 use App\Models\Lote;
 use App\Models\Manzano;
@@ -39,6 +40,8 @@ class ReportController extends Controller
                 ->where('estado', 'confirmado')
                 ->whereBetween('fecha', [now()->startOfMonth(), now()])
                 ->sum('monto'),
+            'montoDevuelto' => Devolucion::whereHas('venta.lote.manzano', fn (Builder $query) => $query->where('urbanizacion_id', $urbanizacionId))->sum('monto_devuelto'),
+            'montoRetenido' => Devolucion::whereHas('venta.lote.manzano', fn (Builder $query) => $query->where('urbanizacion_id', $urbanizacionId))->sum('monto_retenido_empresa'),
         ]);
     }
 

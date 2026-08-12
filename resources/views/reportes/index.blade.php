@@ -7,6 +7,8 @@
     <div class="card"><div class="muted">Reservas activas</div><div class="stat-value">{{ $reservasActivas }}</div></div>
     <div class="card"><div class="muted">Cuotas pendientes</div><div class="stat-value">{{ $cuotasPendientes }}</div></div>
     <div class="card"><div class="muted">Ingresos del mes</div><div class="stat-value">{{ number_format($ingresosMes, 2) }}</div></div>
+    <div class="card"><div class="muted">Monto devuelto</div><div class="stat-value">{{ number_format($montoDevuelto, 2) }}</div></div>
+    <div class="card"><div class="muted">Monto retenido</div><div class="stat-value">{{ number_format($montoRetenido, 2) }}</div></div>
 </div>
 
 <section class="grid report-card-grid" style="margin-top:18px;">

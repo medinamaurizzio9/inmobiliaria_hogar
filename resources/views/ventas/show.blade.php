@@ -3,6 +3,12 @@
 <div class="topbar">
     <h1 class="title">Detalle de venta</h1>
     <div class="actions">
+        @if(auth()->user()->hasRole('administrador') && in_array($venta->tipo_operacion, ['semicontado','credito']) && $venta->estado !== 'anulada' && $venta->cuotas->whereIn('estado',['pendiente','parcial','vencida'])->sum('saldo_pendiente') > 0)
+            <a class="btn" href="{{ route('ventas.reestructurar', $venta) }}">Reestructurar deuda</a>
+        @endif
+        @if(auth()->user()->hasRole('administrador') && $venta->estado !== 'anulada')
+            <a class="btn danger" href="{{ route('ventas.rescindir', $venta) }}">Rescindir venta</a>
+        @endif
         <a class="btn secondary" href="{{ route('pdf.plan', $venta) }}">Imprimir plan de pagos</a>
         <a class="btn secondary" href="{{ route('pdf.contrato', $venta) }}">Generar contrato</a>
         @if(auth()->user()->hasRole('administrador') && auth()->user()->can('editar ventas') && ($venta->estado !== 'anulada' || auth()->user()->can('editar ventas anuladas')))
@@ -11,6 +17,11 @@
         <a class="btn secondary" href="{{ route('ventas.index') }}">Volver</a>
     </div>
 </div>
+
+<div class="card" style="margin-top:18px;"><h2>Historial de reestructuraciones</h2>
+@forelse($venta->reestructuraciones as $item)<p><strong>{{ $item->fecha?->format('d/m/Y') }}</strong> — saldo anterior $us {{ number_format((float)$item->saldo_antes,2) }}, plazo anterior {{ $item->plazo_anterior }}, nuevo plazo {{ $item->nuevo_plazo }}. Administrador: {{ $item->administrador?->name }}. Motivo: {{ $item->motivo }}</p>@empty<p>Sin reestructuraciones.</p>@endforelse</div>
+<div class="card" style="margin-top:18px;"><h2>Rescision / devolucion</h2>
+@forelse($venta->devoluciones as $item)<p><strong>{{ $item->fecha?->format('d/m/Y') }}</strong> — pagado $us {{ number_format((float)$item->monto_pagado,2) }}, devuelto $us {{ number_format((float)$item->monto_devuelto,2) }}, retenido $us {{ number_format((float)$item->monto_retenido_empresa,2) }}. Responsable: {{ $item->responsable?->name }}. Motivo: {{ $item->motivo }}</p>@empty<p>Sin rescisiones.</p>@endforelse</div>
 
 @if (session('status'))
     <div class="status">{{ session('status') }}</div>
