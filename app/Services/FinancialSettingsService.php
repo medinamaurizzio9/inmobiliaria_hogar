@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class FinancialSettingsService
 {
@@ -45,8 +46,14 @@ class FinancialSettingsService
                 ->all();
             $values = [...self::DEFAULTS, ...$stored];
 
+            $qrPath = ltrim((string) $values['qr_institucional_imagen'], '/');
+            $qrPath = str_starts_with($qrPath, 'storage/') ? substr($qrPath, 8) : $qrPath;
+
             return [
                 'qr_institucional_imagen' => (string) $values['qr_institucional_imagen'],
+                'qr_institucional_url' => $qrPath !== '' && Storage::disk('public')->exists($qrPath)
+                    ? Storage::disk('public')->url($qrPath)
+                    : null,
                 'qr_institucional_nombre' => (string) $values['qr_institucional_nombre'],
                 'qr_institucional_activo' => filter_var($values['qr_institucional_activo'], FILTER_VALIDATE_BOOLEAN),
                 'banco_nombre' => (string) $values['banco_nombre'],
@@ -87,8 +94,9 @@ class FinancialSettingsService
         $settings = $this->globalValues();
 
         return [
-            'qr' => $settings['qr_institucional_activo'] && $settings['qr_institucional_imagen'] !== '' ? [
+            'qr' => $settings['qr_institucional_activo'] && $settings['qr_institucional_url'] ? [
                 'imagen' => $settings['qr_institucional_imagen'],
+                'url' => $settings['qr_institucional_url'],
                 'nombre' => $settings['qr_institucional_nombre'],
             ] : null,
             'cuenta_bancaria' => $settings['banco_activo'] ? [

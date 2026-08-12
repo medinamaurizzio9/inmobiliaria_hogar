@@ -11,7 +11,7 @@
         <div class="field">
             <label>Imagen QR institucional</label>
             <input type="file" name="qr_institucional_imagen" accept="image/png,image/jpeg,image/webp">
-            @if($settings['qr_institucional_imagen'])<img src="{{ asset('storage/'.$settings['qr_institucional_imagen']) }}" alt="QR institucional" style="display:block;max-width:180px;max-height:180px;margin-top:10px">@endif
+            @if($settings['qr_institucional_url'])<img src="{{ $settings['qr_institucional_url'] }}" alt="QR institucional" style="display:block;max-width:180px;max-height:180px;margin-top:10px">@endif
         </div>
         <div class="field"><label>Nombre o descripción del QR</label><input name="qr_institucional_nombre" maxlength="255" value="{{ old('qr_institucional_nombre', $settings['qr_institucional_nombre']) }}"></div>
         <input type="hidden" name="qr_institucional_activo" value="0">

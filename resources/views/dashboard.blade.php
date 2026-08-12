@@ -5,8 +5,8 @@
 @section('content')
 <div class="hero-panel">
     <div>
-        @if(!empty($systemSettings['logo_main']))
-            <img src="{{ asset('storage/'.$systemSettings['logo_main']) }}" alt="Logo" style="max-height:80px;margin-bottom:10px;">
+        @if(!empty($systemSettings['logo_main_url']))
+            <img src="{{ $systemSettings['logo_main_url'] }}" alt="Logo" style="max-height:80px;margin-bottom:10px;">
         @endif
         <h1 class="title">{{ $systemSettings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}</h1>
         <div class="subtitle">{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</div>

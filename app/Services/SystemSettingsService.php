@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class SystemSettingsService
 {
@@ -39,7 +40,7 @@ class SystemSettingsService
                 ? SystemSetting::query()->pluck('value', 'key')->all()
                 : [];
 
-            return [
+            $result = [
                 'system_name' => $settings['system_name'] ?? 'IMPACTO URBANIZACIONES',
                 'system_subtitle' => $settings['system_subtitle'] ?? 'Sistema Integral de Terrenos',
                 'public_base_url' => $settings['public_base_url'] ?? '',
@@ -62,7 +63,43 @@ class SystemSettingsService
                 'primary_color' => $settings['primary_color'] ?? '#0f766e',
                 'secondary_color' => $settings['secondary_color'] ?? '#0f2530',
             ];
+
+            foreach (['logo_main', 'logo_login', 'login_background', 'logo_pdf'] as $key) {
+                $result[$key.'_url'] = $this->publicImageUrl($result[$key]);
+                $result[$key.'_path'] = $this->publicImagePath($result[$key]);
+            }
+
+            return $result;
         });
+    }
+
+    public function publicImageUrl(?string $path): ?string
+    {
+        $path = $this->relativePublicPath($path);
+
+        return $path !== null && Storage::disk('public')->exists($path)
+            ? Storage::disk('public')->url($path)
+            : null;
+    }
+
+    public function publicImagePath(?string $path): ?string
+    {
+        $path = $this->relativePublicPath($path);
+
+        return $path !== null && Storage::disk('public')->exists($path)
+            ? Storage::disk('public')->path($path)
+            : null;
+    }
+
+    private function relativePublicPath(?string $path): ?string
+    {
+        $path = ltrim(trim((string) $path), '/');
+
+        if ($path === '' || str_contains($path, '://')) {
+            return null;
+        }
+
+        return str_starts_with($path, 'storage/') ? substr($path, 8) : $path;
     }
 
     public function get(string $key): ?string

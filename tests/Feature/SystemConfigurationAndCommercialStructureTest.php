@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Asesor;
 use App\Models\CashMovement;
 use App\Models\GrupoComercial;
 use App\Models\SupervisorProfile;
@@ -11,6 +10,7 @@ use App\Models\Urbanizacion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -198,7 +198,9 @@ class SystemConfigurationAndCommercialStructureTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('URBANIZACIONES DEMO')
-            ->assertSee('Panel comercial');
+            ->assertSee('Panel comercial')
+            ->assertSee(Storage::disk('public')->url(SystemSetting::where('key', 'logo_main')->value('value')), false)
+            ->assertDontSee('/storage/storage/', false);
     }
 
     public function test_fondo_del_login_es_configurable_y_se_muestra_en_el_acceso(): void
@@ -232,6 +234,32 @@ class SystemConfigurationAndCommercialStructureTest extends TestCase
             ->assertSee('storage/'.$background, false)
             ->assertSee('login-card', false)
             ->assertSee('login-logo', false);
+    }
+
+    public function test_logo_inexistente_no_renderiza_imagen_rota_y_conserva_branding(): void
+    {
+        Storage::fake('public');
+        [$admin, $urbanizacion] = $this->adminContext();
+        SystemSetting::updateOrCreate(['key' => 'system_name'], ['value' => 'HOGAR INMOBILIARIA']);
+        SystemSetting::updateOrCreate(['key' => 'system_subtitle'], ['value' => 'Tu terreno, tu hogar']);
+        SystemSetting::updateOrCreate(['key' => 'logo_main'], ['value' => 'storage/logos/inexistente.png']);
+        SystemSetting::updateOrCreate(['key' => 'logo_login'], ['value' => 'logos/inexistente.png']);
+        Cache::forget('system_settings.all');
+
+        auth()->logout();
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('HOGAR INMOBILIARIA')
+            ->assertSee('Tu terreno, tu hogar')
+            ->assertDontSee('login-logo', false)
+            ->assertDontSee('/storage/storage/', false);
+
+        $this->actingAs($admin)
+            ->withSession(['urbanizacion_id' => $urbanizacion->id])
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('HOGAR INMOBILIARIA')
+            ->assertDontSee('storage/logos/inexistente.png', false);
     }
 
     public function test_recibo_pdf_usa_datos_configurados(): void

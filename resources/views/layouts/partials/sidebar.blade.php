@@ -13,8 +13,8 @@
 
 <aside class="sidebar">
     <div class="brand">
-        @if(!empty($systemSettings['logo_main']))
-            <img src="{{ asset('storage/'.$systemSettings['logo_main']) }}" alt="Logo" style="max-width:72px;max-height:72px;display:block;margin-bottom:8px;">
+        @if(!empty($systemSettings['logo_main_url']))
+            <img src="{{ $systemSettings['logo_main_url'] }}" alt="Logo" style="max-width:72px;max-height:72px;display:block;margin-bottom:8px;">
         @endif
         {{ $systemSettings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}<span>{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</span>
     </div>

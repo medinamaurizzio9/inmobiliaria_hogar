@@ -2,16 +2,16 @@
 
 @section('content')
 <div
-    @class(['login-page', 'has-background' => !empty($systemSettings['login_background'])])
-    @if(!empty($systemSettings['login_background']))
-        style="background-image: url('{{ asset('storage/'.$systemSettings['login_background']) }}');"
+    @class(['login-page', 'has-background' => !empty($systemSettings['login_background_url'])])
+    @if(!empty($systemSettings['login_background_url']))
+        style="background-image: url('{{ $systemSettings['login_background_url'] }}');"
     @endif
 >
     <form method="POST" action="{{ route('login.store') }}" class="login-card">
         @csrf
         <header class="login-heading">
-            @if(!empty($systemSettings['logo_login'] ?? $systemSettings['logo_main']))
-                <img class="login-logo" src="{{ asset('storage/'.($systemSettings['logo_login'] ?: $systemSettings['logo_main'])) }}" alt="Logo">
+            @if($logoUrl = ($systemSettings['logo_login_url'] ?: $systemSettings['logo_main_url']))
+                <img class="login-logo" src="{{ $logoUrl }}" alt="Logo">
             @endif
             <h1>{{ $systemSettings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}</h1>
             <p>{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</p>

@@ -14,6 +14,7 @@ use App\Services\FinancialSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ClientPortalTest extends TestCase
@@ -172,6 +173,7 @@ class ClientPortalTest extends TestCase
 
     private function enablePayments(): void
     {
+        Storage::disk('public')->put('qr/test.png', 'qr');
         foreach (['qr_institucional_activo' => '1', 'qr_institucional_imagen' => 'qr/test.png', 'qr_institucional_nombre' => 'QR Hogar', 'banco_activo' => '1', 'banco_nombre' => 'Banco', 'banco_titular' => 'Hogar', 'banco_numero_cuenta' => '123', 'banco_tipo_cuenta' => 'Corriente', 'banco_moneda' => 'BOB', 'banco_instrucciones' => 'Transferir'] as $key => $value) {
             SystemSetting::updateOrCreate(['key' => $key], ['value' => $value]);
         } Cache::flush();

@@ -10,8 +10,8 @@
 <main class="public-page receipt-verification-page">
     <section class="card receipt-verification-card">
         <header class="receipt-public-header">
-            @if(!empty($settings['logo_main']))
-                <img src="{{ asset('storage/'.$settings['logo_main']) }}" alt="Logo">
+            @if(!empty($settings['logo_main_url']))
+                <img src="{{ $settings['logo_main_url'] }}" alt="Logo">
             @endif
             <div>
                 <h1>{{ $settings['system_name'] ?? 'INMOLIDER CRM' }}</h1>

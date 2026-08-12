@@ -30,9 +30,9 @@
     @foreach(['logo_main' => 'Logo principal', 'logo_login' => 'Logo para login', 'login_background' => 'Imagen fondo login', 'logo_pdf' => 'Logo para PDF'] as $key => $label)
         <div class="field image-setting">
             <label>{{ $label }}</label>
-            @if($settings[$key])
+            @if($settings[$key.'_url'])
                 <div class="setting-image-preview @if($key === 'login_background') background-preview @endif">
-                    <img src="{{ asset('storage/'.$settings[$key]) }}" alt="{{ $label }}">
+                    <img src="{{ $settings[$key.'_url'] }}" alt="{{ $label }}">
                 </div>
             @endif
             <input type="file" name="{{ $key }}" accept="image/jpeg,image/png,image/webp">

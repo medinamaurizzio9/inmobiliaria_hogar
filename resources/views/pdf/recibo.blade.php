@@ -45,12 +45,12 @@
 </head>
 <body>
 @php
-    $logo = ($settings['logo_pdf'] ?? '') ?: ($settings['logo_main'] ?? null);
+    $logo = ($settings['logo_pdf_path'] ?? '') ?: ($settings['logo_main_path'] ?? null);
     $conceptoNormalizado = strtolower(str_replace('_', ' ', (string) $movimiento->concepto));
     $muestraCondiciones = in_array($conceptoNormalizado, ['reserva', 'anticipo', 'cuota inicial'], true);
 @endphp
 <div class="header">
-    <div class="logo">@if($logo)<img src="{{ public_path('storage/'.$logo) }}" alt="Logo">@endif</div>
+    <div class="logo">@if($logo)<img src="{{ $logo }}" alt="Logo">@endif</div>
     <div class="company">
         <div class="company-name">{{ $settings['company_name'] ?? $settings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}</div>
         <div class="system-name">{{ $settings['system_name'] ?? 'IMPACTO URBANIZACIONES' }} - {{ $settings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</div>

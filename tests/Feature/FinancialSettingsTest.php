@@ -23,6 +23,7 @@ class FinancialSettingsTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Urbanizacion $urbanizacion;
 
     protected function setUp(): void
@@ -227,6 +228,8 @@ class FinancialSettingsTest extends TestCase
 
     public function test_payment_instructions_solo_expone_informacion_publica(): void
     {
+        Storage::fake('public');
+        Storage::disk('public')->put('qr/publico.png', 'qr');
         $this->setSettings([
             'qr_institucional_imagen' => 'qr/publico.png',
             'qr_institucional_activo' => '1',
@@ -239,6 +242,7 @@ class FinancialSettingsTest extends TestCase
 
         $instructions = app(FinancialSettingsService::class)->paymentInstructions();
         $this->assertSame(['qr', 'cuenta_bancaria'], array_keys($instructions));
+        $this->assertSame(Storage::disk('public')->url('qr/publico.png'), $instructions['qr']['url']);
         $this->assertArrayNotHasKey('mora_habilitada', $instructions);
         $this->assertArrayNotHasKey('dias_aviso_vencimiento', $instructions);
     }
