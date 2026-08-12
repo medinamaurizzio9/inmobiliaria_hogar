@@ -221,6 +221,21 @@ textarea { min-height: 90px; resize: vertical; }
     70% { box-shadow: 0 0 0 14px rgba(37,99,235,0); }
     100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
 }
+
+.quick-search { margin: 18px 0; }
+.quick-search input { min-height: 48px; flex: 1; font-size: 1rem; }
+.quick-debts { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.quick-debt .actions, .quick-pending .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.quick-modal { width: min(680px, 94vw); max-height: 92vh; border: 0; border-radius: 16px; padding: 24px; }
+.quick-modal::backdrop { background: rgba(15, 23, 42, .72); }
+.preview-box { margin: 14px 0; padding: 12px; background: #f1f5f9; border-radius: 8px; }
+.quick-pending article { padding: 14px 0; border-bottom: 1px solid #e5e7eb; }
+@media (max-width: 640px) {
+    .quick-summary, .quick-debts { grid-template-columns: 1fr; }
+    .quick-modal { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
+    .quick-debt .btn { flex: 1; min-height: 46px; }
+    .quick-search .actions { display: grid; }
+}
 .gps-plan-picker { display: grid; gap: 10px; }
 .gps-plan-frame { position: relative; overflow: auto; border: 1px solid #dce4e8; border-radius: 8px; background: #eef4f6; }
 .gps-plan-frame img { display: block; width: 100%; height: auto; }

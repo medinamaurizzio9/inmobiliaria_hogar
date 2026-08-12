@@ -4,6 +4,7 @@ use App\Http\Controllers\AsesorController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashMovementController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\CobranzaController;
 use App\Http\Controllers\CommercialSettingController;
 use App\Http\Controllers\ConfiguracionUrbanizacionGpsController;
 use App\Http\Controllers\CuotaController;
@@ -120,6 +121,12 @@ Route::middleware('auth')->group(function (): void {
             Route::post('/lotes-importar', [LotImportController::class, 'store'])->middleware('can:crear lotes')->name('lotes.import.store');
 
             Route::get('/caja', [CashMovementController::class, 'index'])->middleware('can:cobrar cuotas')->name('caja.index');
+            Route::get('/cobranza', [CobranzaController::class, 'index'])->middleware('can:cobrar cuotas')->name('cobranza.index');
+            Route::post('/cobranza/{venta}/preview', [CobranzaController::class, 'preview'])->middleware('can:cobrar cuotas')->name('cobranza.preview');
+            Route::post('/cobranza/{venta}', [CobranzaController::class, 'store'])->middleware('can:cobrar cuotas')->name('cobranza.store');
+            Route::get('/cobranza/{venta}/estado-cuenta.pdf', [PdfController::class, 'saleAccountStatement'])->middleware('can:cobrar cuotas')->name('cobranza.estado-cuenta');
+            Route::post('/cobranza/pagos/{cashMovement}/confirmar', [CobranzaController::class, 'confirm'])->middleware('can:cobrar cuotas')->name('cobranza.confirm');
+            Route::post('/cobranza/pagos/{cashMovement}/rechazar', [CobranzaController::class, 'reject'])->middleware('can:cobrar cuotas')->name('cobranza.reject');
             Route::get('/caja/{cashMovement}', [CashMovementController::class, 'show'])->middleware('can:cobrar cuotas')->name('caja.show');
             Route::post('/caja/{cashMovement}/confirmar', [CashMovementController::class, 'confirm'])->middleware('can:cobrar cuotas')->name('caja.confirm');
             Route::post('/caja/{cashMovement}/rechazar', [CashMovementController::class, 'reject'])->middleware('can:cobrar cuotas')->name('caja.reject');

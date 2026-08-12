@@ -42,24 +42,7 @@ class PaymentAllocationService
         $restante = $totalCents;
         $aplicadas = collect();
 
-        $candidatas = Cuota::query()
-            ->where('venta_id', $primary->venta_id)
-            ->where('saldo_pendiente', '>', 0)
-            ->get();
-
-        $ordenadas = $candidatas->sort(function (Cuota $a, Cuota $b) use ($primary): int {
-            $pa = $a->id === $primary->id ? 0 : 1;
-            $pb = $b->id === $primary->id ? 0 : 1;
-
-            if ($pa !== $pb) {
-                return $pa <=> $pb;
-            }
-
-            $fa = (string) ($a->fecha_vencimiento?->format('Y-m-d') ?? $a->fecha_programada?->format('Y-m-d') ?? '');
-            $fb = (string) ($b->fecha_vencimiento?->format('Y-m-d') ?? $b->fecha_programada?->format('Y-m-d') ?? '');
-
-            return $fa === $fb ? ($a->id <=> $b->id) : strcmp($fa, $fb);
-        })->values();
+        $ordenadas = $this->orderedCandidates($primary, 'cuotas');
 
         foreach ($ordenadas as $cuota) {
             if ($restante <= 0) {
@@ -107,6 +90,53 @@ class PaymentAllocationService
         return $aplicadas->values();
     }
 
+    /** @return array{saldo_anterior:string,saldo_estimado:string,aplicaciones:array<int,array<string,mixed>>} */
+    public function preview(Cuota $primary, float|string $amount, string $type = 'cuotas'): array
+    {
+        $totalCents = Money::toCents($amount);
+        $candidates = $this->orderedCandidates($primary, $type);
+        $balanceCents = $candidates->sum(fn (Cuota $cuota): int => Money::toCents($cuota->saldo_pendiente));
+        if ($totalCents <= 0 || $totalCents > $balanceCents) {
+            throw ValidationException::withMessages(['monto' => 'El monto debe ser mayor a cero y no superar el saldo pendiente de la venta.']);
+        }
+
+        $remaining = $totalCents;
+        $applications = [];
+        foreach ($candidates as $cuota) {
+            if ($remaining <= 0) {
+                break;
+            }
+            $applied = min($remaining, Money::toCents($cuota->saldo_pendiente));
+            $newBalance = Money::toCents($cuota->saldo_pendiente) - $applied;
+            $applications[] = ['cuota_id' => $cuota->id, 'numero' => $cuota->numero, 'monto_aplicado' => Money::fromCents($applied), 'estado_estimado' => $newBalance === 0 ? 'pagada' : 'parcial'];
+            $remaining -= $applied;
+        }
+
+        return ['saldo_anterior' => Money::fromCents($balanceCents), 'saldo_estimado' => Money::fromCents($balanceCents - $totalCents), 'aplicaciones' => $applications];
+    }
+
+    private function orderedCandidates(Cuota $primary, string $type): Collection
+    {
+        $candidates = Cuota::query()->where('venta_id', $primary->venta_id)->where('saldo_pendiente', '>', 0)->get();
+        if ($type === 'amortizacion') {
+            return $candidates->sortByDesc(fn (Cuota $cuota) => [(string) ($cuota->fecha_vencimiento?->format('Y-m-d') ?? ''), $cuota->id])->values();
+        }
+
+        return $candidates->sort(function (Cuota $a, Cuota $b) use ($primary): int {
+            $pa = $a->id === $primary->id ? 0 : 1;
+            $pb = $b->id === $primary->id ? 0 : 1;
+
+            if ($pa !== $pb) {
+                return $pa <=> $pb;
+            }
+
+            $fa = (string) ($a->fecha_vencimiento?->format('Y-m-d') ?? $a->fecha_programada?->format('Y-m-d') ?? '');
+            $fb = (string) ($b->fecha_vencimiento?->format('Y-m-d') ?? $b->fecha_programada?->format('Y-m-d') ?? '');
+
+            return $fa === $fb ? ($a->id <=> $b->id) : strcmp($fa, $fb);
+        })->values();
+    }
+
     /**
      * Aplicar una amortizacion extraordinaria desde la ultima cuota pendiente.
      * De esta forma se conserva la mensualidad pactada y se reduce el plazo.
@@ -122,13 +152,7 @@ class PaymentAllocationService
         }
 
         $totalCents = Money::toCents($movement->monto);
-        $candidatas = Cuota::query()
-            ->where('venta_id', $primary->venta_id)
-            ->where('saldo_pendiente', '>', 0)
-            ->orderByDesc('fecha_vencimiento')
-            ->orderByDesc('fecha_programada')
-            ->orderByDesc('id')
-            ->get();
+        $candidatas = $this->orderedCandidates($primary, 'amortizacion');
         $saldoCents = $candidatas->sum(fn (Cuota $cuota): int => Money::toCents($cuota->saldo_pendiente));
 
         if ($totalCents <= 0 || $totalCents > $saldoCents) {

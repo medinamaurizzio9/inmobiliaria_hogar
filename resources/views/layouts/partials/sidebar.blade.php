@@ -97,10 +97,11 @@
         @endif
 
         @if($hasProject && ($isAdmin || $isGerente || $isCajero) && $user?->can('cobrar cuotas'))
-            @php($isOpen = $active(['cuotas.*', 'caja.*']))
+            @php($isOpen = $active(['cuotas.*', 'caja.*', 'cobranza.*']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="finanzas">
                 <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>$</span> Finanzas</button>
                 <div class="sidebar-submenu">
+                    <a @class(['sidebar-link', 'active' => $active('cobranza.*')]) href="{{ route('cobranza.index') }}">Cobranza</a>
                     <a @class(['sidebar-link', 'active' => $active('cuotas.*')]) href="{{ route('cuotas.index') }}">Cuotas</a>
                     <a @class(['sidebar-link', 'active' => $active('caja.*')]) href="{{ route('caja.index') }}">Caja</a>
                 </div>

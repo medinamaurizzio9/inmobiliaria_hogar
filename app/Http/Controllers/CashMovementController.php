@@ -78,7 +78,7 @@ class CashMovementController extends Controller
 
     public function confirm(Request $request, CashMovement $cashMovement, CashMovementService $cashMovementService): RedirectResponse
     {
-        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente']), 403, 'No tienes permiso para confirmar pagos.');
+        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente', 'cajero']), 403, 'No tienes permiso para confirmar pagos.');
         abort_unless(UrbanizacionContext::cashMovementBelongsToCurrent($cashMovement), 403, 'No tienes acceso a esta urbanizacion');
 
         $cashMovementService->confirm($cashMovement, $request->user());
@@ -88,7 +88,7 @@ class CashMovementController extends Controller
 
     public function reject(Request $request, CashMovement $cashMovement, CashMovementService $cashMovementService): RedirectResponse
     {
-        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente']), 403, 'No tienes permiso para rechazar pagos.');
+        abort_unless($request->user()->hasAnyRole(['administrador', 'gerente', 'cajero']), 403, 'No tienes permiso para rechazar pagos.');
         abort_unless(UrbanizacionContext::cashMovementBelongsToCurrent($cashMovement), 403, 'No tienes acceso a esta urbanizacion');
 
         $data = $request->validate(['motivo' => ['required', 'string', 'max:500']]);

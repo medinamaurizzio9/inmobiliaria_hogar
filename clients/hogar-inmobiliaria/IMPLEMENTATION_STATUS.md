@@ -121,8 +121,7 @@ Esta sección es la principal referencia para continuar el desarrollo.
 
 Título:
 
-Fase 4 — Cobranza / Caja Rápida: buscador único, cobro mediante modal,
-previsualización, confirmación y recibo inmediato.
+Fase 5 — Reportes gerenciales y cartera financiera avanzada.
 
 Prioridad:
 
@@ -134,21 +133,20 @@ Estado:
 
 Objetivo:
 
-Optimizar la cobranza interna con búsqueda única, previsualización de deuda por
-terreno, confirmación segura y emisión inmediata del recibo.
+Construir reportes gerenciales y de cartera sobre ventas, cuotas, cobros,
+vencimientos, devoluciones y montos retenidos existentes.
 
 Archivos probablemente involucrados:
 
-- `app/Http/Controllers/CashMovementController.php`
-- `app/Services/CashMovementService.php`
-- `app/Services/PaymentAllocationService.php`
-- `resources/views/caja/`
+- `app/Http/Controllers/ReportController.php`
+- consultas de ventas, cuotas, pagos y devoluciones existentes;
+- vistas y exportaciones de reportes financieros.
 
 Documentación requerida:
 
 - `/AGENTS.md`
 - `./MODULES.md`
-- `./BUSINESS_OVERRIDES.md` (reglas F-9, F-10, F-20, F-22 y F-23)
+- `./BUSINESS_OVERRIDES.md` (reglas F-29, F-30, F-31 y F-35)
 - `/docs/06-ARCHITECTURE.md`
 
 Agregar únicamente los documentos CORE necesarios.
@@ -159,10 +157,10 @@ Agregar únicamente los documentos CORE necesarios.
 
 La tarea estará terminada cuando:
 
-- [ ] buscador único identifica cliente/terreno/cuota;
-- [ ] previsualización no modifica saldos;
-- [ ] confirmación reutiliza el motor financiero;
-- [ ] recibo inmediato disponible;
+- [ ] cartera total, al día y vencida calculada con datos reales;
+- [ ] cobros, devoluciones y retenciones no se duplican;
+- [ ] filtros gerenciales y exportaciones funcionan;
+- [ ] aislamiento por urbanización verificado;
 - [ ] pruebas correspondientes pasan.
 
 ---
@@ -173,7 +171,7 @@ La tarea estará terminada cuando:
 
 Título:
 
-Fase 3 — Cuenta automática de cliente y Portal Financiero.
+Fase 4 — Cobranza / Caja Rápida.
 
 Fecha:
 
@@ -183,46 +181,43 @@ Resultado:
 
 Implementado y verificado con tests:
 
-- Al cerrar una venta se crea un único `User` vinculado al cliente cuando existe
-  correo válido; se asigna rol cliente y cambio obligatorio de contraseña.
-- Contraseña temporal criptográficamente aleatoria, almacenada solo como hash y
-  mostrada una vez al usuario interno mediante sesión flash.
-- Venta preservada con advertencia administrativa cuando falta correo válido.
-- Portal móvil por terreno con saldos independientes, cuotas, pagos, alertas,
-  documentos y estados financieros.
-- Solicitudes QR/transferencia reutilizan `CashMovementService`, quedan pendientes
-  y no modifican cuotas ni crean aplicaciones hasta su confirmación.
-- Estado de cuenta PDF por terreno, contratos, planes y recibos confirmados.
-- Ownership backend por `auth()->user()->cliente_id` para todos los recursos.
+- Pantalla `/cobranza` para administrador, gerente y cajero.
+- Buscador único por datos del cliente, terreno, venta y referencia.
+- Tarjetas independientes por venta/terreno con deuda priorizada.
+- Modal responsive de cobro con efectivo, QR y transferencia.
+- Preview puro en `PaymentAllocationService`, compartiendo el orden real de
+  cobro normal y amortización, sin escrituras en base de datos.
+- Cobros confirmados transaccionales y pagos pendientes sin afectar deuda.
+- Confirmación/rechazo de pendientes con recálculo y validación de saldo actual.
+- Resultado inmediato con cuotas afectadas, saldo y recibo PDF.
+- Historial limitado, estado de cuenta y resumen real de caja del día.
 
 Nota: sin commit ni push, en rama `hogar-inmobiliaria`.
 
 Archivos principales modificados:
 
-- `app/Services/ClientAccountProvisioner.php`
-- `app/Services/SaleService.php`
-- `app/Http/Controllers/MiCuentaController.php`
-- `app/Http/Controllers/PdfController.php`
-- `resources/views/clientes/mi-cuenta.blade.php`
-- `resources/views/clientes/terreno.blade.php`
-- `resources/views/clientes/pagar.blade.php`
-- `resources/views/clientes/documentos.blade.php`
-- `resources/views/pdf/venta-estado-cuenta.blade.php`
+- `app/Http/Controllers/CobranzaController.php`
+- `app/Services/QuickCollectionService.php`
+- `app/Services/PaymentAllocationService.php`
+- `app/Http/Controllers/CashMovementController.php`
+- `resources/views/cobranza/index.blade.php`
+- `resources/views/layouts/partials/sidebar.blade.php`
+- `public/css/app.css`
 - `routes/web.php`
-- `tests/Feature/ClientPortalTest.php`
+- `tests/Feature/QuickCollectionTest.php`
 
 Migraciones:
 
-- Ninguna. Se reutilizaron `users.cliente_id`, `must_change_password`, ventas,
-  cuotas, `cash_movements` y `pago_aplicaciones` existentes.
+- Ninguna. Se reutilizaron ventas, cuotas, `cash_movements` y
+  `pago_aplicaciones` existentes.
 
 Pruebas ejecutadas:
 
 ```bash
-php artisan test tests/Feature/ClientPortalTest.php
-# 12 passed, 55 assertions
+php artisan test tests/Feature/QuickCollectionTest.php
+# 10 passed, 55 assertions
 php artisan test
-# 473 passed, 1788 assertions
+# 483 passed, 1843 assertions
 ```
 
-Pendiente (siguiente tarea): Fase 4 — Cobranza / Caja Rápida.
+Pendiente (siguiente tarea): Fase 5 — Reportes gerenciales y cartera financiera avanzada.
