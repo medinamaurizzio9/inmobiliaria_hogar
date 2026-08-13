@@ -59,13 +59,26 @@ class SystemSettingController extends Controller
 
         if ($request->hasFile('login_background')) {
             if (! empty($before['login_background'])) {
-                Storage::disk('public')->delete($before['login_background']);
+                $oldBackground = $settings->normalizedPublicPath($before['login_background']);
+                if ($oldBackground !== null) {
+                    Storage::disk('public')->delete($oldBackground);
+                }
             }
 
             $data['login_background'] = $request->file('login_background')->store('login-backgrounds', 'public');
         }
 
         $settings->setMany($data);
+
+        foreach (['logo_main', 'logo_login', 'logo_pdf'] as $logoKey) {
+            if (isset($data[$logoKey]) && ! empty($before[$logoKey])) {
+                $oldPath = $settings->normalizedPublicPath($before[$logoKey]);
+                if ($oldPath !== null && $oldPath !== $data[$logoKey]) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+            }
+        }
+
         $auditService->log(SystemSetting::query()->first(), 'cambiar_configuracion_sistema', 'Configuracion general del sistema actualizada.', $before, $settings->all(), $request);
 
         if (! file_exists(public_path('storage'))) {

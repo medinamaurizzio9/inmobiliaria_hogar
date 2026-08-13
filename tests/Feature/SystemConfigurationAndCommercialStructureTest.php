@@ -8,6 +8,7 @@ use App\Models\SupervisorProfile;
 use App\Models\SystemSetting;
 use App\Models\Urbanizacion;
 use App\Models\User;
+use App\Services\SystemSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -260,6 +261,35 @@ class SystemConfigurationAndCommercialStructureTest extends TestCase
             ->assertOk()
             ->assertSee('HOGAR INMOBILIARIA')
             ->assertDontSee('storage/logos/inexistente.png', false);
+    }
+
+    public function test_rutas_historicas_de_logo_se_normalizan_sin_duplicar_storage(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('logos/test.png', 'logo');
+        $settings = app(SystemSettingsService::class);
+
+        foreach (['logos/test.png', 'storage/logos/test.png', '/storage/logos/test.png'] as $storedPath) {
+            $this->assertTrue(Storage::disk('public')->exists('logos/test.png'));
+            $this->assertSame(Storage::disk('public')->url('logos/test.png'), $settings->publicImageUrl($storedPath));
+            $this->assertStringNotContainsString('/storage/storage/', $settings->publicImageUrl($storedPath));
+        }
+
+        $this->assertNull($settings->publicImageUrl('https://example.test/logo.png'));
+    }
+
+    public function test_existencia_de_logo_se_revalida_aunque_los_settings_esten_en_cache(): void
+    {
+        Storage::fake('public');
+        SystemSetting::updateOrCreate(['key' => 'logo_main'], ['value' => 'logos/tardio.png']);
+        Cache::forget('system_settings.all');
+        $settings = app(SystemSettingsService::class);
+
+        $this->assertNull($settings->all()['logo_main_url']);
+
+        Storage::disk('public')->put('logos/tardio.png', 'logo');
+
+        $this->assertSame(Storage::disk('public')->url('logos/tardio.png'), $settings->all()['logo_main_url']);
     }
 
     public function test_recibo_pdf_usa_datos_configurados(): void

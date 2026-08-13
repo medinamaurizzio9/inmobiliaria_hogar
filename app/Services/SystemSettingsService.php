@@ -35,12 +35,12 @@ class SystemSettingsService
 
     public function all(): array
     {
-        return Cache::remember('system_settings.all', 60, function () {
+        $result = Cache::remember('system_settings.all', 60, function () {
             $settings = Schema::hasTable('system_settings')
                 ? SystemSetting::query()->pluck('value', 'key')->all()
                 : [];
 
-            $result = [
+            return [
                 'system_name' => $settings['system_name'] ?? 'IMPACTO URBANIZACIONES',
                 'system_subtitle' => $settings['system_subtitle'] ?? 'Sistema Integral de Terrenos',
                 'public_base_url' => $settings['public_base_url'] ?? '',
@@ -63,19 +63,19 @@ class SystemSettingsService
                 'primary_color' => $settings['primary_color'] ?? '#0f766e',
                 'secondary_color' => $settings['secondary_color'] ?? '#0f2530',
             ];
-
-            foreach (['logo_main', 'logo_login', 'login_background', 'logo_pdf'] as $key) {
-                $result[$key.'_url'] = $this->publicImageUrl($result[$key]);
-                $result[$key.'_path'] = $this->publicImagePath($result[$key]);
-            }
-
-            return $result;
         });
+
+        foreach (['logo_main', 'logo_login', 'login_background', 'logo_pdf'] as $key) {
+            $result[$key.'_url'] = $this->publicImageUrl($result[$key]);
+            $result[$key.'_path'] = $this->publicImagePath($result[$key]);
+        }
+
+        return $result;
     }
 
     public function publicImageUrl(?string $path): ?string
     {
-        $path = $this->relativePublicPath($path);
+        $path = $this->normalizedPublicPath($path);
 
         return $path !== null && Storage::disk('public')->exists($path)
             ? Storage::disk('public')->url($path)
@@ -84,14 +84,14 @@ class SystemSettingsService
 
     public function publicImagePath(?string $path): ?string
     {
-        $path = $this->relativePublicPath($path);
+        $path = $this->normalizedPublicPath($path);
 
         return $path !== null && Storage::disk('public')->exists($path)
             ? Storage::disk('public')->path($path)
             : null;
     }
 
-    private function relativePublicPath(?string $path): ?string
+    public function normalizedPublicPath(?string $path): ?string
     {
         $path = ltrim(trim((string) $path), '/');
 
