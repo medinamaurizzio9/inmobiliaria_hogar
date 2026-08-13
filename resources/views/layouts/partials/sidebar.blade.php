@@ -11,12 +11,15 @@
     $active = fn (array|string $patterns) => request()->routeIs(...(array) $patterns);
 @endphp
 
-<aside class="sidebar">
+<aside class="sidebar" id="crm-sidebar">
+    <div class="sidebar-brand-row">
     <div class="brand">
         @if(!empty($systemSettings['logo_main_url']))
             <img src="{{ $systemSettings['logo_main_url'] }}" alt="Logo" style="max-width:72px;max-height:72px;display:block;margin-bottom:8px;">
         @endif
         {{ $systemSettings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}<span>{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</span>
+    </div>
+    <button class="sidebar-collapse" type="button" data-sidebar-toggle aria-label="Contraer navegación"><i class="fa-solid fa-angles-left"></i></button>
     </div>
 
     @unless($isCliente)
@@ -41,7 +44,7 @@
         @if($isCliente || $user?->can('ver dashboard'))
             @php($isOpen = $active(['dashboard', 'urbanizaciones.select', 'clientes.mi-cuenta']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="inicio">
-                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>+</span> Inicio</button>
+                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Principal"><span class="menu-icon"><i class="fa-solid fa-house"></i></span><span class="menu-label">Principal</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     @if($isCliente)
                         <a @class(['sidebar-link', 'active' => $active('clientes.mi-cuenta')]) href="{{ route('clientes.mi-cuenta') }}">Inicio</a>
@@ -60,7 +63,7 @@
         @if($hasProject && ($isAdmin || $isGerente || $isSupervisor || $isVendedor))
             @php($isOpen = $active(['urbanizaciones.*', 'manzanos.*', 'lotes.*', 'mapa', 'lotes.import.*']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="terrenos">
-                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>#</span> Terrenos</button>
+                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Gestión inmobiliaria"><span class="menu-icon"><i class="fa-solid fa-map-location-dot"></i></span><span class="menu-label">Gestión inmobiliaria</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     @if($isAdmin || $isGerente)
                         @can('ver lotes')<a @class(['sidebar-link', 'active' => $active('urbanizaciones.*')]) href="{{ route('urbanizaciones.index') }}">Urbanizaciones</a>@endcan
@@ -79,7 +82,7 @@
         @if($hasProject && ($isAdmin || $isGerente || $isSupervisor || $isVendedor))
             @php($isOpen = $active(['reservas.*', 'clientes.*', 'ventas.*']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="comercial">
-                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>*</span> Comercial</button>
+                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Comercial"><span class="menu-icon"><i class="fa-solid fa-handshake"></i></span><span class="menu-label">Comercial</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     @if($isAdmin || $isGerente)
                         @can('ver reservas')<a @class(['sidebar-link', 'active' => $active('reservas.*')]) href="{{ route('reservas.index') }}">Reservas</a>@endcan
@@ -99,7 +102,7 @@
         @if($hasProject && ($isAdmin || $isGerente || $isCajero) && $user?->can('cobrar cuotas'))
             @php($isOpen = $active(['cuotas.*', 'caja.*', 'cobranza.*']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="finanzas">
-                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>$</span> Finanzas</button>
+                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Finanzas"><span class="menu-icon"><i class="fa-solid fa-wallet"></i></span><span class="menu-label">Finanzas</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     <a @class(['sidebar-link', 'active' => $active('cobranza.*')]) href="{{ route('cobranza.index') }}">Cobranza</a>
                     <a @class(['sidebar-link', 'active' => $active('cuotas.*')]) href="{{ route('cuotas.index') }}">Cuotas</a>
@@ -111,7 +114,7 @@
         @if($hasProject && $user?->can('ver reportes'))
             @php($isOpen = $active(['reportes.*', 'export.csv']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="reportes">
-                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>%</span> Reportes</button>
+                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Reportes"><span class="menu-icon"><i class="fa-solid fa-chart-column"></i></span><span class="menu-label">Reportes</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     <a @class(['sidebar-link', 'active' => $active('reportes.index')]) href="{{ route('reportes.index') }}">Resumen</a>
                     @if($isAdmin || $isGerente)<a @class(['sidebar-link', 'active' => $active('reportes.gerencia')]) href="{{ route('reportes.gerencia') }}">Reportes gerenciales</a>@endif
@@ -129,7 +132,7 @@
         @if($user?->can('editar asesores') || $user?->can('asignar urbanizaciones a asesores'))
             @php($isOpen = $active(['asesores.*', 'supervisores.*', 'grupos-comerciales.*', 'urbanizaciones.asignaciones']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="equipo-comercial">
-                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>@</span> Equipo comercial</button>
+                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Equipo comercial"><span class="menu-icon"><i class="fa-solid fa-users"></i></span><span class="menu-label">Equipo comercial</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     @can('editar asesores')<a @class(['sidebar-link', 'active' => $active('asesores.*')]) href="{{ route('asesores.index') }}">{{ $isSupervisor ? 'Asesores de mi equipo' : 'Asesores' }}</a>@endcan
                     @if($isAdmin)
@@ -146,7 +149,7 @@
         @if($isSuperAdmin || $isAdmin || $isGerente)
             @php($isOpen = $active('admin.*'))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="administracion">
-                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}"><span>=</span> Administracion</button>
+                <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Administración"><span class="menu-icon"><i class="fa-solid fa-sliders"></i></span><span class="menu-label">Administración</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     @if($isSuperAdmin || $isAdmin)
                         <a @class(['sidebar-link', 'active' => $active(['admin.usuarios', 'admin.usuarios.*'])]) href="{{ route('admin.usuarios') }}">Usuarios</a>
@@ -164,6 +167,6 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('logout') }}">@csrf<button class="logout">Salir</button></form>
+        <form class="sidebar-logout" method="POST" action="{{ route('logout') }}">@csrf<button class="logout" title="Cerrar sesión"><i class="fa-solid fa-arrow-right-from-bracket"></i><span>Cerrar sesión</span></button></form>
     </nav>
 </aside>

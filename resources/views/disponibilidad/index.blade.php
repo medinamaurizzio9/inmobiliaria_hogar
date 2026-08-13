@@ -3,21 +3,18 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Disponibilidad - IMPACTO URBANIZACIONES</title>
+    <title>Disponibilidad - {{ $systemSettings['system_name'] }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 </head>
 <body>
 <main class="public-page">
     @inject('pricingService', 'App\Services\LotPricingService')
-    <div class="public-header">
-        <div>
-            <h1>IMPACTO URBANIZACIONES</h1>
-            <p>Sistema Integral de Terrenos</p>
-        </div>
-        <a class="btn" href="#consulta">Consultar con asesor</a>
-    </div>
+    <header class="public-header crm-public-header"><a class="public-brand" href="{{ route('disponibilidad.publica') }}">@if($systemSettings['logo_main_url'])<img src="{{ $systemSettings['logo_main_url'] }}" alt="{{ $systemSettings['system_name'] }}">@endif<span><strong>{{ $systemSettings['system_name'] }}</strong><small>{{ $systemSettings['system_subtitle'] }}</small></span></a><nav><a href="#urbanizaciones">Urbanizaciones</a><a href="#disponibles">Lotes disponibles</a><a href="#consulta">Contacto</a></nav><a class="btn secondary" href="{{ route('login') }}">Iniciar sesión</a></header>
 
-    <form method="GET" action="{{ route('disponibilidad.publica') }}" class="card form public-filter">
+    <section class="public-hero"><div><span class="eyebrow">Inversión inmobiliaria</span><h1>Encuentra el terreno para construir tu futuro</h1><p>Explora urbanizaciones, ubicaciones y lotes disponibles con información actualizada.</p><div class="actions"><a class="btn" href="#disponibles">Ver disponibilidad</a><a class="btn secondary" href="#consulta">Contactarnos</a></div></div><div class="public-hero-mark"><i class="fa-solid fa-building-circle-check"></i><strong>Disponibilidad real</strong><span>Consulta directa por urbanización</span></div></section>
+
+    <form id="urbanizaciones" method="GET" action="{{ route('disponibilidad.publica') }}" class="card form public-filter">
         <div class="field">
             <label>Urbanizacion</label>
             <select name="urbanizacion_id" onchange="this.form.submit()">
@@ -83,7 +80,7 @@
             @endif
         </section>
 
-        <section class="card" style="margin-top:18px;">
+        <section id="disponibles" class="card" style="margin-top:18px;">
             <h2>Lotes disponibles</h2>
             <table class="table">
                 <thead><tr><th>Manzano</th><th>Lote</th><th>Superficie</th>@if($urbanizacion->mostrar_precio_publico)<th>Precio</th>@endif<th>Estado</th><th></th></tr></thead>

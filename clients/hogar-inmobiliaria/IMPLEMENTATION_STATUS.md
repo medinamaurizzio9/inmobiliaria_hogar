@@ -16,6 +16,45 @@ despliegue y el smoke test hayan ocurrido realmente.
 
 ## LAST_COMPLETED
 
+Rediseño y optimización visual del CRM inmobiliario, con foco en navegación y módulos financieros.
+
+Resultado verificado:
+
+- Sidebar negro/oliva optimizado: estado persistido aplicado antes del render, transición estructural de 150 ms, logo oculto en modo contraído y tooltips por sección.
+- Dashboard, login, disponibilidad pública, topbar y componentes CRM unificados con la identidad negro, verde oliva y blanco.
+- Cobranza paginada a 20 operaciones, con búsqueda y filtros por estado, vencimiento y asesor; tarjetas financieras con cliente, iniciales, lote, saldo, progreso, próxima cuota y acciones existentes.
+- El esquema real de clientes no posee foto/avatar ni relación equivalente; se usa el fallback de iniciales sin inventar columnas ni migraciones.
+- Cuotas incorpora filtros, paginación y resumen financiero; Caja conserva sus filtros avanzados y añade KPI calculados sobre la consulta filtrada.
+- Consultas de Cobranza/Cuotas/Caja conservan el alcance de urbanización y usan eager loading para evitar N+1.
+- No se modificó la lógica financiera, no se crearon migraciones y no se realizó commit ni push.
+
+Pruebas:
+
+```text
+php artisan route:list
+170 routes
+
+php artisan test tests/Feature/SystemConfigurationAndCommercialStructureTest.php tests/Feature/QuickCollectionTest.php tests/Feature/CajaFiltrosAvanzadosTest.php tests/Feature/SidebarMenuTest.php
+45 passed, 209 assertions
+
+php artisan test
+497 passed, 1915 assertions
+
+npm run build
+passed
+
+vendor/bin/pint --test --dirty
+passed
+
+git diff --check
+passed
+```
+
+Pendiente real: UAT manual, prueba responsive en dispositivos/navegadores,
+restauración controlada del backup y despliegue en infraestructura real.
+
+## PREVIOUS_COMPLETED
+
 Fase 6 — Hardening final, UX, pruebas de aceptación y preparación de producción.
 
 Resultado verificado:

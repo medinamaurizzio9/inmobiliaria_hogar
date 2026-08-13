@@ -27,6 +27,7 @@ class CashMovementController extends Controller
         $filtros = $request->only(self::FILTROS);
         $urbanizacionId = UrbanizacionContext::filtroUrbanizacion($request->user(), $request->query('urbanizacion_id', ''));
 
+        $baseQuery = UrbanizacionContext::cashMovements(CashMovement::query(), $urbanizacionId)->filtered($filtros);
         $movimientos = UrbanizacionContext::cashMovements(
             CashMovement::with('cliente', 'venta', 'reserva', 'cuota', 'user'),
             $urbanizacionId
@@ -45,6 +46,11 @@ class CashMovementController extends Controller
             ],
             'urbanizaciones' => UrbanizacionContext::accessibleUrbanizaciones($request->user()),
             'usuarios' => $this->usuariosCaja($urbanizacionId),
+            'summary' => [
+                'ingresos' => (clone $baseQuery)->where('tipo', 'ingreso')->where('estado', 'confirmado')->sum('monto'),
+                'egresos' => (clone $baseQuery)->where('tipo', 'egreso')->whereIn('estado', ['confirmado', 'devolucion'])->sum('monto'),
+                'operaciones' => (clone $baseQuery)->count(),
+            ],
         ]);
     }
 

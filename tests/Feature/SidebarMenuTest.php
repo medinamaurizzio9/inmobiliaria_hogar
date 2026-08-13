@@ -25,10 +25,10 @@ class SidebarMenuTest extends TestCase
             ->assertSee('Mapa de disponibilidad')
             ->assertSee('Lotes disponibles')
             ->assertSee('Mis reservas')
-            ->assertDontSee('Ventas')
-            ->assertDontSee('Caja')
-            ->assertDontSee('Reportes')
-            ->assertDontSee('Administracion');
+            ->assertDontSee(route('ventas.index'), false)
+            ->assertDontSee(route('caja.index'), false)
+            ->assertDontSee(route('reportes.index'), false)
+            ->assertDontSee(route('admin.usuarios'), false);
     }
 
     public function test_administrador_ve_administracion(): void
@@ -42,7 +42,7 @@ class SidebarMenuTest extends TestCase
             ->withSession(['urbanizacion_id' => $urbanizacion->id])
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Administracion')
+            ->assertSee('Administración')
             ->assertSee('Usuarios')
             ->assertSee('Roles y permisos')
             ->assertSee('data-menu-toggle', false)

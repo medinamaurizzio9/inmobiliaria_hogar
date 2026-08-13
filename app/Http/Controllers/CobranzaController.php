@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CashMovement;
 use App\Models\Cuota;
+use App\Models\User;
 use App\Models\Venta;
 use App\Services\CashMovementService;
 use App\Services\FinancialSettingsService;
@@ -22,17 +23,27 @@ class CobranzaController extends Controller
     public function index(Request $request, FinancialSettingsService $settings): View
     {
         $this->authorizeAccess($request);
-        $search = trim((string) $request->query('q', ''));
-        $ventas = collect();
-        if ($search !== '') {
-            $ventas = UrbanizacionContext::ventas(Venta::with('cliente', 'lote.manzano.urbanizacion', 'cuotas', 'cashMovements'), UrbanizacionContext::currentId())
-                ->where(function (Builder $query) use ($search): void {
+        $filters = $request->only(['q', 'estado', 'vencimiento_desde', 'vencimiento_hasta', 'asesor_id']);
+        $search = trim((string) ($filters['q'] ?? ''));
+        $query = UrbanizacionContext::ventas(Venta::with(['cliente', 'lote.manzano.urbanizacion', 'cuotas' => fn ($q) => $q->orderBy('numero'), 'cashMovements' => fn ($q) => $q->latest()->limit(8)]), UrbanizacionContext::currentId())
+            ->whereHas('cuotas', fn (Builder $q) => $q->whereIn('estado', ['pendiente', 'parcial', 'vencida'])->where('saldo_pendiente', '>', 0))
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $query) use ($search): void {
                     $query->whereKey(is_numeric($search) ? (int) $search : 0)
                         ->orWhereHas('cliente', fn (Builder $q) => $q->where('nombre', 'like', "%{$search}%")->orWhere('documento', 'like', "%{$search}%")->orWhere('telefono', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
                         ->orWhereHas('lote', fn (Builder $q) => $q->where('codigo', 'like', "%{$search}%")->orWhereHas('manzano', fn (Builder $m) => $m->where('codigo', 'like', "%{$search}%")->orWhereHas('urbanizacion', fn (Builder $u) => $u->where('nombre', 'like', "%{$search}%"))))
                         ->orWhereHas('cashMovements', fn (Builder $q) => $q->where('referencia', 'like', "%{$search}%"));
-                })->limit(30)->get();
-        }
+                });
+            })
+            ->when(($filters['asesor_id'] ?? '') !== '', fn (Builder $q) => $q->where('user_id', (int) $filters['asesor_id']))
+            ->when(($filters['vencimiento_desde'] ?? '') !== '', fn (Builder $q) => $q->whereHas('cuotas', fn (Builder $c) => $c->whereDate('fecha_vencimiento', '>=', $filters['vencimiento_desde'])->where('saldo_pendiente', '>', 0)))
+            ->when(($filters['vencimiento_hasta'] ?? '') !== '', fn (Builder $q) => $q->whereHas('cuotas', fn (Builder $c) => $c->whereDate('fecha_vencimiento', '<=', $filters['vencimiento_hasta'])->where('saldo_pendiente', '>', 0)))
+            ->when(($filters['estado'] ?? '') === 'vencido', fn (Builder $q) => $q->whereHas('cuotas', fn (Builder $c) => $c->where('estado', 'vencida')->where('saldo_pendiente', '>', 0)))
+            ->when(($filters['estado'] ?? '') === 'por_vencer', fn (Builder $q) => $q->whereHas('cuotas', fn (Builder $c) => $c->whereIn('estado', ['pendiente', 'parcial'])->whereBetween('fecha_vencimiento', [today(), today()->addDays(7)])->where('saldo_pendiente', '>', 0)))
+            ->when(($filters['estado'] ?? '') === 'al_dia', fn (Builder $q) => $q->whereDoesntHave('cuotas', fn (Builder $c) => $c->where('estado', 'vencida')->where('saldo_pendiente', '>', 0)));
+
+        $ventas = $query->orderByRaw("case when exists (select 1 from cuotas where cuotas.venta_id = ventas.id and cuotas.estado = 'vencida' and cuotas.saldo_pendiente > 0) then 0 else 1 end")
+            ->orderBy('id')->paginate(20)->withQueryString();
 
         $today = UrbanizacionContext::cashMovements(CashMovement::query(), UrbanizacionContext::currentId())->whereDate('fecha', today());
         $confirmed = (clone $today)->where('estado', 'confirmado')->where('tipo', 'ingreso');
@@ -40,7 +51,9 @@ class CobranzaController extends Controller
         $resultId = (int) session('quick_payment_result', 0);
         $result = $resultId ? UrbanizacionContext::cashMovements(CashMovement::with('venta.lote.manzano.urbanizacion', 'pagoAplicaciones.cuota'), UrbanizacionContext::currentId())->find($resultId) : null;
 
-        return view('cobranza.index', ['ventas' => $ventas, 'search' => $search, 'pending' => $pending, 'result' => $result, 'instructions' => $settings->paymentInstructions(), 'summary' => [
+        $asesorIds = UrbanizacionContext::ventas(Venta::query(), UrbanizacionContext::currentId())->distinct()->pluck('user_id');
+
+        return view('cobranza.index', ['ventas' => $ventas, 'search' => $search, 'filters' => $filters, 'asesores' => User::query()->whereIn('id', $asesorIds)->orderBy('name')->get(), 'pending' => $pending, 'result' => $result, 'instructions' => $settings->paymentInstructions(), 'summary' => [
             'total' => (clone $confirmed)->sum('monto'), 'efectivo' => (clone $confirmed)->where('metodo_pago', 'efectivo')->sum('monto'),
             'qr' => (clone $confirmed)->where('metodo_pago', 'QR')->sum('monto'), 'transferencia' => (clone $confirmed)->where('metodo_pago', 'transferencia')->sum('monto'),
             'operaciones' => (clone $confirmed)->count(), 'pendientes' => $pending->count(),

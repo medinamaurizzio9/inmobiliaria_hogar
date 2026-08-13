@@ -16,6 +16,13 @@
     <div class="status">{{ session('status') }}</div>
 @endif
 
+<div class="crm-kpi-grid compact">
+    <x-crm.kpi-card label="Ingresos" :value="'Bs '.number_format($summary['ingresos'],2,',','.')" icon="fa-arrow-trend-up" />
+    <x-crm.kpi-card label="Egresos" :value="'Bs '.number_format($summary['egresos'],2,',','.')" icon="fa-arrow-trend-down" tone="warning" />
+    <x-crm.kpi-card label="Saldo neto" :value="'Bs '.number_format($summary['ingresos']-$summary['egresos'],2,',','.')" icon="fa-scale-balanced" />
+    <x-crm.kpi-card label="Operaciones" :value="$summary['operaciones']" icon="fa-receipt" />
+</div>
+
 <form method="GET" action="{{ route('caja.index') }}" class="card filter-form cash-filters">
     <div class="field">
         <label for="q">Buscar movimiento</label>

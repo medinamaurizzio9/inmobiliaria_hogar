@@ -14,6 +14,7 @@ class CriticalLoginAndLoteValidationTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Urbanizacion $urbanizacion;
 
     protected function setUp(): void
@@ -30,7 +31,7 @@ class CriticalLoginAndLoteValidationTest extends TestCase
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('Ingreso administrativo');
+            ->assertSee('Iniciar sesión');
     }
 
     public function test_post_login_sigue_funcionando(): void

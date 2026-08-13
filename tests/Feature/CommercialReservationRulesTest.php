@@ -190,7 +190,7 @@ class CommercialReservationRulesTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertDontSee('Disponibilidad')
-            ->assertDontSee('Ventas');
+            ->assertDontSee(route('ventas.index'), false);
     }
 
     private function loteDisponible(Urbanizacion $urbanizacion): Lote

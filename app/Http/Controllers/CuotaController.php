@@ -7,6 +7,7 @@ use App\Models\Cuota;
 use App\Models\User;
 use App\Services\InstallmentService;
 use App\Support\UrbanizacionContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,13 +18,20 @@ class CuotaController extends Controller
     {
         $installmentService->markOverdue();
 
-        $query = UrbanizacionContext::cuotas(Cuota::with('venta.cliente', 'venta.lote.manzano', 'venta.cuotas'))->orderBy('fecha_programada');
+        $filters = $request->only(['q', 'estado', 'fecha_desde', 'fecha_hasta']);
+        $query = UrbanizacionContext::cuotas(Cuota::with('venta.cliente', 'venta.lote.manzano', 'venta.cuotas'))->orderBy('fecha_programada')
+            ->when(($filters['q'] ?? '') !== '', fn (Builder $q) => $q->whereHas('venta', fn (Builder $v) => $v->whereHas('cliente', fn (Builder $c) => $c->where('nombre', 'like', '%'.$filters['q'].'%')->orWhere('documento', 'like', '%'.$filters['q'].'%'))->orWhereHas('lote', fn (Builder $l) => $l->where('codigo', 'like', '%'.$filters['q'].'%')->orWhereHas('manzano', fn (Builder $m) => $m->where('codigo', 'like', '%'.$filters['q'].'%')))))
+            ->when(($filters['estado'] ?? '') !== '', fn (Builder $q) => $q->where('estado', $filters['estado'] === 'vencidas' ? 'vencida' : $filters['estado']))
+            ->when(($filters['fecha_desde'] ?? '') !== '', fn (Builder $q) => $q->whereDate('fecha_programada', '>=', $filters['fecha_desde']))
+            ->when(($filters['fecha_hasta'] ?? '') !== '', fn (Builder $q) => $q->whereDate('fecha_programada', '<=', $filters['fecha_hasta']));
+        $summaryQuery = clone $query;
 
-        if ($request->query('estado') === 'vencidas') {
-            $query->where('estado', 'vencida');
-        }
-
-        return view('cuotas.index', ['cuotas' => $query->paginate(25)->appends($request->query())]);
+        return view('cuotas.index', ['cuotas' => $query->paginate(25)->withQueryString(), 'filters' => $filters, 'summary' => [
+            'pendientes' => (clone $summaryQuery)->whereIn('estado', ['pendiente', 'parcial'])->count(),
+            'vencidas' => (clone $summaryQuery)->where('estado', 'vencida')->count(),
+            'pagadas_mes' => (clone $summaryQuery)->where('estado', 'pagada')->whereBetween('fecha_pago', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+            'saldo' => (clone $summaryQuery)->sum('saldo_pendiente'),
+        ]]);
     }
 
     public function update(PayCuotaRequest $request, Cuota $cuota, InstallmentService $installmentService): RedirectResponse
