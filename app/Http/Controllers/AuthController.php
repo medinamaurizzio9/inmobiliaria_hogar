@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\InitialDestinationService;
+use App\Services\SystemSettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -9,35 +11,31 @@ use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function showLogin(): View
+    public function showLogin(Request $request, PublicPortalController $portal, SystemSettingsService $settings): View
     {
-        return view('auth.login');
+        return $portal($request, $settings);
     }
 
-    public function showLoginForm(): View
+    public function showLoginForm(Request $request, PublicPortalController $portal, SystemSettingsService $settings): View
     {
-        return $this->showLogin();
+        return $this->showLogin($request, $portal, $settings);
     }
 
-    public function login(Request $request): RedirectResponse
+    public function login(Request $request, InitialDestinationService $destination): RedirectResponse
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (Auth::attempt([...$credentials, 'estado' => 'activo'], $request->boolean('remember'))) {
             $request->session()->regenerate();
 
             if ($request->user()->must_change_password) {
                 return redirect()->route('password.change');
             }
 
-            if ($request->user()->hasRole('cliente')) {
-                return redirect()->route('clientes.mi-cuenta');
-            }
-
-            return redirect()->intended(route('urbanizaciones.select'));
+            return redirect()->intended(route($destination->routeName($request->user(), $request)));
         }
 
         return back()->withErrors([

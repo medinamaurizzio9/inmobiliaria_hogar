@@ -72,12 +72,103 @@ class ClientPortalTest extends TestCase
         $this->actingAs($user)->get(route('clientes.mi-cuenta'))->assertRedirect(route('password.change'));
     }
 
+    public function test_destino_inicial_del_cliente_siempre_es_mi_cuenta(): void
+    {
+        $user = $this->clientUser();
+        $user->update(['password' => Hash::make('Password-segura-123'), 'estado' => 'activo']);
+        $this->assertGreaterThan(0, Venta::where('cliente_id', $user->cliente_id)->count());
+
+        $this->post(route('logout'));
+        $this->flushSession();
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'Password-segura-123'])
+            ->assertRedirect(route('clientes.mi-cuenta'));
+    }
+
     public function test_dashboard_muestra_solo_terrenos_y_saldos_del_cliente(): void
     {
         $user = $this->clientUser();
         $own = Venta::where('cliente_id', $user->cliente_id)->firstOrFail();
         $foreign = Venta::where('cliente_id', '!=', $user->cliente_id)->firstOrFail();
-        $this->actingAs($user)->get(route('clientes.mi-cuenta'))->assertOk()->assertSee($own->lote->codigo)->assertDontSee($foreign->lote->codigo)->assertSee('Saldo total informativo');
+        $this->actingAs($user)->get(route('clientes.mi-cuenta'))->assertOk()->assertSee($own->lote->codigo)->assertDontSee($foreign->lote->codigo)->assertSee('Saldo total informativo')->assertSee(route('portal.terrenos.show', $own), false);
+    }
+
+    public function test_perfil_es_pagina_separada_y_estado_activo_correcto(): void
+    {
+        $user = $this->clientUser();
+
+        $this->actingAs($user)->get(route('clientes.mi-cuenta'))
+            ->assertOk()
+            ->assertDontSee('class="active" href="'.route('portal.perfil'), false);
+
+        $this->get(route('portal.perfil'))
+            ->assertOk()
+            ->assertSee('Mi perfil')
+            ->assertSee($user->cliente->nombre)
+            ->assertSee($user->cliente->documento)
+            ->assertSee('class="active" href="'.route('portal.perfil'), false)
+            ->assertDontSee('Saldo total informativo');
+    }
+
+    public function test_detalle_es_explicito_y_regresa_a_mi_cuenta(): void
+    {
+        $user = $this->clientUser();
+        $venta = Venta::where('cliente_id', $user->cliente_id)->firstOrFail();
+
+        $this->actingAs($user)->get(route('portal.terrenos.show', $venta))
+            ->assertOk()
+            ->assertSee('Detalle de mi terreno')
+            ->assertSee('Volver a mi cuenta')
+            ->assertSee(route('clientes.mi-cuenta').'#mis-terrenos', false);
+    }
+
+    public function test_dashboard_muestra_metricas_reales_y_navegacion_simplificada(): void
+    {
+        $user = $this->clientUser();
+        $venta = Venta::with('cuotas')->whereHas('cuotas')->firstOrFail();
+        $venta->update(['cliente_id' => $user->cliente_id, 'estado' => 'activa']);
+        $cuota = $venta->cuotas->firstOrFail();
+        $cuota->update(['estado' => 'vencida', 'fecha_vencimiento' => now()->subDay(), 'saldo_pendiente' => 321]);
+        $this->movement($user, $venta, $cuota, 'pendiente_verificacion');
+
+        $this->actingAs($user)->get(route('clientes.mi-cuenta'))
+            ->assertOk()
+            ->assertSee('Saldo total informativo')
+            ->assertSee('Pagos por verificar')
+            ->assertSee('Cuotas vencidas')
+            ->assertSee('Mi perfil')
+            ->assertSee('Mis terrenos')
+            ->assertSee('Reserva de visitas')
+            ->assertSee('Ver urbanizaciones')
+            ->assertDontSee('Usuarios del sistema')
+            ->assertDontSee('Configuracion financiera');
+    }
+
+    public function test_reserva_visita_usa_nombre_y_urbanizacion_sin_documento(): void
+    {
+        $user = $this->clientUser();
+        $urbanizacion = $this->newLot()->manzano->urbanizacion;
+        SystemSetting::updateOrCreate(['key' => 'whatsapp'], ['value' => '70000000']);
+        Cache::flush();
+
+        $response = $this->actingAs($user)->get(route('portal.visitas'));
+        $response->assertOk()
+            ->assertSee($urbanizacion->nombre)
+            ->assertSee('https://wa.me/59170000000', false)
+            ->assertSee(rawurlencode("Hola, soy {$user->cliente->nombre}. Quisiera reservar una visita para conocer la urbanización {$urbanizacion->nombre}."), false)
+            ->assertDontSee($user->cliente->documento);
+    }
+
+    public function test_catalogo_muestra_agregados_y_disponibilidad_publica(): void
+    {
+        $user = $this->clientUser();
+        $urbanizacion = $this->newLot()->manzano->urbanizacion;
+
+        $this->actingAs($user)->get(route('portal.urbanizaciones'))
+            ->assertOk()
+            ->assertSee($urbanizacion->nombre)
+            ->assertSee('Lotes')
+            ->assertSee('Disponibles')
+            ->assertSee(route('disponibilidad.urbanizacion', $urbanizacion->slug), false);
     }
 
     public function test_cliente_no_accede_venta_pago_documentos_o_pdf_ajenos(): void

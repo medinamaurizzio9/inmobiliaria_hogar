@@ -20,6 +20,26 @@ class SystemConfigurationAndCommercialStructureTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_puede_quitar_imagen_configurable_sin_romper_fallback(): void
+    {
+        Storage::fake('public');
+        [$admin, $urbanizacion] = $this->adminContext();
+        Storage::disk('public')->put('logos/principal.png', 'logo');
+        SystemSetting::updateOrCreate(['key' => 'logo_main'], ['value' => 'logos/principal.png']);
+        Cache::forget('system_settings.all');
+
+        $settings = app(SystemSettingsService::class)->all();
+        $response = $this->actingAs($admin)->withSession(['urbanizacion_id' => $urbanizacion->id])->put(route('admin.configuracion-general.update'), [
+            ...collect($settings)->only(['system_name', 'system_subtitle', 'public_base_url', 'company_name', 'razon_social', 'nit', 'direccion', 'ciudad', 'departamento', 'telefono', 'celular', 'whatsapp', 'email', 'website', 'footer_text', 'primary_color', 'secondary_color'])->all(),
+            'remove_images' => ['logo_main'],
+        ]);
+
+        $response->assertRedirect()->assertSessionHasNoErrors();
+        Storage::disk('public')->assertMissing('logos/principal.png');
+        $this->assertSame('', SystemSetting::where('key', 'logo_main')->value('value'));
+        $this->assertNull(app(SystemSettingsService::class)->all()['logo_main_url']);
+    }
+
     public function test_admin_puede_crear_supervisor_con_usuario(): void
     {
         [$admin, $urbanizacion] = $this->adminContext();
@@ -231,10 +251,10 @@ class SystemConfigurationAndCommercialStructureTest extends TestCase
 
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('login-page has-background', false)
+            ->assertSee('class="portal-hero"', false)
             ->assertSee('storage/'.$background, false)
-            ->assertSee('login-card', false)
-            ->assertSee('login-logo', false);
+            ->assertSee('desktop-login', false)
+            ->assertSee('mobile-login', false);
     }
 
     public function test_logo_inexistente_no_renderiza_imagen_rota_y_conserva_branding(): void

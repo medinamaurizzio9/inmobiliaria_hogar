@@ -39,7 +39,7 @@ class CriticalLoginAndLoteValidationTest extends TestCase
         $this->post('/login', [
             'email' => 'admin@impacto.test',
             'password' => 'password',
-        ])->assertRedirect(route('urbanizaciones.select'));
+        ])->assertRedirect(route('dashboard'));
     }
 
     public function test_crear_lote_duplicado_devuelve_error_de_validacion(): void

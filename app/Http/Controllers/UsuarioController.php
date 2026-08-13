@@ -7,6 +7,7 @@ use App\Models\SupervisorProfile;
 use App\Models\Urbanizacion;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\ManagedImageService;
 use App\Services\UserDeletionService;
 use App\Services\UserSpreadsheetService;
 use Illuminate\Http\RedirectResponse;
@@ -15,8 +16,8 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use RuntimeException;
 use Illuminate\View\View;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 
 class UsuarioController extends Controller
@@ -34,7 +35,14 @@ class UsuarioController extends Controller
         $this->authorizeManageUsers($request);
         $sort = $this->sort($request);
 
+        $search = trim((string) $request->query('q', ''));
+        $role = (string) $request->query('rol', '');
+        $estado = (string) $request->query('estado', '');
         $users = User::with('roles')
+            ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'cliente'))
+            ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")))
+            ->when($role !== '', fn ($query) => $query->role($role))
+            ->when(in_array($estado, ['activo', 'inactivo'], true), fn ($query) => $query->where('estado', $estado))
             ->tap(fn ($query) => $this->applySorting($query, $sort['field'], $sort['direction']))
             ->paginate(50)
             ->appends($request->query());
@@ -43,7 +51,7 @@ class UsuarioController extends Controller
             fn (User $user) => $user->setAttribute('has_delete_history', $deletionService->hasHistoricalRecords($user))
         );
 
-        return view('administracion.usuarios.index', compact('users'));
+        return view('administracion.usuarios.index', ['users' => $users, 'roles' => $this->roles(), 'filters' => compact('search', 'role', 'estado')]);
     }
 
     public function create(Request $request): View
@@ -51,7 +59,7 @@ class UsuarioController extends Controller
         $this->authorizeManageUsers($request);
 
         return view('administracion.usuarios.create', [
-            'usuario' => new User(),
+            'usuario' => new User,
             'roles' => $this->roles(),
         ]);
     }
@@ -175,6 +183,7 @@ class UsuarioController extends Controller
                 if ($rowErrors !== []) {
                     $errors = array_merge($errors, $rowErrors);
                     $skipped++;
+
                     continue;
                 }
 
@@ -323,6 +332,30 @@ class UsuarioController extends Controller
             ->with('status', $result === 'deleted'
                 ? 'Usuario eliminado correctamente.'
                 : 'El usuario tiene registros asociados, por seguridad fue desactivado.');
+    }
+
+    public function updatePhoto(Request $request, User $usuario, ManagedImageService $images, AuditService $auditService): RedirectResponse
+    {
+        $this->authorizeManageUsers($request);
+        abort_if($usuario->hasRole('cliente'), 404);
+        $data = $request->validate(['foto' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']]);
+        $before = $usuario->foto;
+        $usuario->forceFill(['foto' => $images->replace($before, $data['foto'], 'usuarios')])->save();
+        $auditService->log($usuario, 'cambiar_foto_usuario', 'Fotografía del usuario actualizada.', ['foto' => $before], ['foto' => $usuario->foto], $request);
+
+        return back()->with('status', 'Fotografía actualizada.');
+    }
+
+    public function deletePhoto(Request $request, User $usuario, ManagedImageService $images, AuditService $auditService): RedirectResponse
+    {
+        $this->authorizeManageUsers($request);
+        abort_if($usuario->hasRole('cliente'), 404);
+        $before = $usuario->foto;
+        $images->delete($before, 'usuarios');
+        $usuario->forceFill(['foto' => null])->save();
+        $auditService->log($usuario, 'quitar_foto_usuario', 'Fotografía del usuario eliminada.', ['foto' => $before], ['foto' => null], $request);
+
+        return back()->with('status', 'Fotografía eliminada.');
     }
 
     private function roles()

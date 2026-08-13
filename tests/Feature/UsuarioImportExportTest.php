@@ -2,10 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Asesor;
-use App\Models\SupervisorProfile;
-use App\Models\User;
 use App\Models\Urbanizacion;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -153,7 +151,7 @@ class UsuarioImportExportTest extends TestCase
                 'password' => 'nueva-clave-segura',
                 'password_confirmation' => 'nueva-clave-segura',
             ])
-            ->assertRedirect(route('urbanizaciones.select'));
+            ->assertRedirect(route('dashboard'));
 
         $this->assertFalse($user->fresh()->must_change_password);
     }

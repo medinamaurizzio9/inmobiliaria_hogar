@@ -34,6 +34,7 @@
                 <div class="setting-image-preview @if($key === 'login_background') background-preview @endif">
                     <img src="{{ $settings[$key.'_url'] }}" alt="{{ $label }}">
                 </div>
+                <label class="image-remove"><input type="checkbox" name="remove_images[]" value="{{ $key }}" onchange="if(this.checked&&!confirm('¿Seguro que deseas quitar esta imagen?'))this.checked=false"> Quitar imagen</label>
             @endif
             <input type="file" name="{{ $key }}" accept="image/jpeg,image/png,image/webp">
         </div>

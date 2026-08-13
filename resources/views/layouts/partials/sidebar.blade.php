@@ -13,12 +13,12 @@
 
 <aside class="sidebar" id="crm-sidebar">
     <div class="sidebar-brand-row">
-    <div class="brand">
+    <a class="brand" href="{{ $isCliente ? route('clientes.mi-cuenta') : '#' }}">
         @if(!empty($systemSettings['logo_main_url']))
             <img src="{{ $systemSettings['logo_main_url'] }}" alt="Logo" style="max-width:72px;max-height:72px;display:block;margin-bottom:8px;">
         @endif
         {{ $systemSettings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}<span>{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</span>
-    </div>
+    </a>
     <button class="sidebar-collapse" type="button" data-sidebar-toggle aria-label="Contraer navegación"><i class="fa-solid fa-angles-left"></i></button>
     </div>
 
@@ -41,21 +41,21 @@
     @endunless
 
     <nav class="nav accordion-nav" data-sidebar-accordion>
-        @if($isCliente || $user?->can('ver dashboard'))
+        @if($isCliente)
+            <div class="client-sidebar-nav">
+                <span class="client-sidebar-title">Mi cuenta</span>
+                <a @class(['active' => $active('portal.perfil')]) href="{{ route('portal.perfil') }}"><i class="fa-regular fa-user"></i><span>Mi perfil</span></a>
+                <a href="{{ route('clientes.mi-cuenta') }}#mis-terrenos"><i class="fa-regular fa-map"></i><span>Mis terrenos</span></a>
+                <a @class(['active' => $active('portal.visitas')]) href="{{ route('portal.visitas') }}"><i class="fa-regular fa-calendar-check"></i><span>Reserva de visitas</span></a>
+                <a @class(['active' => $active('portal.urbanizaciones')]) href="{{ route('portal.urbanizaciones') }}"><i class="fa-regular fa-building"></i><span>Ver urbanizaciones</span></a>
+            </div>
+        @elseif($user?->can('ver dashboard'))
             @php($isOpen = $active(['dashboard', 'urbanizaciones.select', 'clientes.mi-cuenta']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="inicio">
                 <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Principal"><span class="menu-icon"><i class="fa-solid fa-house"></i></span><span class="menu-label">Principal</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
-                    @if($isCliente)
-                        <a @class(['sidebar-link', 'active' => $active('clientes.mi-cuenta')]) href="{{ route('clientes.mi-cuenta') }}">Inicio</a>
-                        <a class="sidebar-link" href="{{ route('clientes.mi-cuenta') }}#mis-terrenos">Mis terrenos</a>
-                        <a class="sidebar-link" href="{{ route('clientes.mi-cuenta') }}#pagos">Pagos</a>
-                        <a class="sidebar-link" href="{{ route('clientes.mi-cuenta') }}#mis-terrenos">Documentos</a>
-                        <a class="sidebar-link" href="{{ route('clientes.mi-cuenta') }}#perfil">Mi perfil</a>
-                    @else
-                        @can('ver dashboard')<a @class(['sidebar-link', 'active' => $active('dashboard')]) href="{{ route('dashboard') }}">Dashboard</a>@endcan
-                        <a @class(['sidebar-link', 'active' => $active('urbanizaciones.select')]) href="{{ route('urbanizaciones.select') }}">Seleccionar urbanizacion</a>
-                    @endif
+                    @can('ver dashboard')<a @class(['sidebar-link', 'active' => $active('dashboard')]) href="{{ route('dashboard') }}">Dashboard</a>@endcan
+                    <a @class(['sidebar-link', 'active' => $active('urbanizaciones.select')]) href="{{ route('urbanizaciones.select') }}">Seleccionar urbanizacion</a>
                 </div>
             </div>
         @endif
@@ -100,12 +100,11 @@
         @endif
 
         @if($hasProject && ($isAdmin || $isGerente || $isCajero) && $user?->can('cobrar cuotas'))
-            @php($isOpen = $active(['cuotas.*', 'caja.*', 'cobranza.*']))
+            @php($isOpen = $active(['caja.*', 'cobranza.*']))
             <div @class(['sidebar-group', 'open' => $isOpen, 'active' => $isOpen]) data-menu-key="finanzas">
                 <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Finanzas"><span class="menu-icon"><i class="fa-solid fa-wallet"></i></span><span class="menu-label">Finanzas</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     <a @class(['sidebar-link', 'active' => $active('cobranza.*')]) href="{{ route('cobranza.index') }}">Cobranza</a>
-                    <a @class(['sidebar-link', 'active' => $active('cuotas.*')]) href="{{ route('cuotas.index') }}">Cuotas</a>
                     <a @class(['sidebar-link', 'active' => $active('caja.*')]) href="{{ route('caja.index') }}">Caja</a>
                 </div>
             </div>
@@ -152,9 +151,11 @@
                 <button class="sidebar-group-toggle" type="button" data-menu-toggle aria-expanded="{{ $isOpen ? 'true' : 'false' }}" title="Administración"><span class="menu-icon"><i class="fa-solid fa-sliders"></i></span><span class="menu-label">Administración</span><i class="fa-solid fa-chevron-down menu-chevron"></i></button>
                 <div class="sidebar-submenu">
                     @if($isSuperAdmin || $isAdmin)
-                        <a @class(['sidebar-link', 'active' => $active(['admin.usuarios', 'admin.usuarios.*'])]) href="{{ route('admin.usuarios') }}">Usuarios</a>
+                        <a @class(['sidebar-link', 'active' => $active(['admin.usuarios', 'admin.usuarios.*'])]) href="{{ route('admin.usuarios') }}">Usuarios del sistema</a>
+                        <a @class(['sidebar-link', 'active' => $active('admin.compradores*')]) href="{{ route('admin.compradores') }}">Usuarios compradores</a>
                         <a @class(['sidebar-link', 'active' => $active('admin.roles')]) href="{{ route('admin.roles') }}">Roles y permisos</a>
                         <a @class(['sidebar-link', 'active' => $active('admin.configuracion-general')]) href="{{ route('admin.configuracion-general') }}">Configuracion general</a>
+                        <a @class(['sidebar-link', 'active' => $active('admin.noticias.*')]) href="{{ route('admin.noticias.index') }}">Noticias</a>
                     @endif
                     <a @class(['sidebar-link', 'active' => $active('admin.configuracion')]) href="{{ route('admin.configuracion') }}">Configuracion comercial</a>
                     <a @class(['sidebar-link', 'active' => $active('admin.configuracion-financiera')]) href="{{ route('admin.configuracion-financiera') }}">Configuracion financiera</a>

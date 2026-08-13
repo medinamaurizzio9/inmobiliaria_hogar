@@ -6,6 +6,7 @@ use App\Http\Controllers\CashMovementController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobranzaController;
 use App\Http\Controllers\CommercialSettingController;
+use App\Http\Controllers\CompradorUsuarioController;
 use App\Http\Controllers\ConfiguracionUrbanizacionGpsController;
 use App\Http\Controllers\CuotaController;
 use App\Http\Controllers\DashboardController;
@@ -19,9 +20,12 @@ use App\Http\Controllers\LotImportController;
 use App\Http\Controllers\ManzanoController;
 use App\Http\Controllers\MapaController;
 use App\Http\Controllers\MiCuentaController;
+use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\PasswordChangeController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\PublicDisponibilidadController;
+use App\Http\Controllers\PublicLeadController;
+use App\Http\Controllers\PublicPortalController;
 use App\Http\Controllers\PublicReceiptVerificationController;
 use App\Http\Controllers\ReestructuracionController;
 use App\Http\Controllers\ReportController;
@@ -41,6 +45,8 @@ use Spatie\Permission\Models\Role;
 Route::get('/disponibilidad', PublicDisponibilidadController::class)->name('disponibilidad.publica');
 Route::get('/u/{slug}', [PublicDisponibilidadController::class, 'showBySlug'])->name('disponibilidad.urbanizacion');
 Route::get('/recibos/verificar/{numero}', PublicReceiptVerificationController::class)->name('recibos.verificar');
+Route::get('/noticias/{slug}', [PublicPortalController::class, 'noticia'])->name('public.noticias.show');
+Route::post('/contacto', [PublicLeadController::class, 'store'])->middleware('throttle:5,1')->name('public.contacto.store');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/', [AuthController::class, 'showLogin']);
@@ -56,6 +62,9 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('password.changed')->group(function (): void {
         Route::middleware('role:cliente')->prefix('mi-cuenta')->group(function (): void {
             Route::get('/', [MiCuentaController::class, 'index'])->name('clientes.mi-cuenta');
+            Route::get('/perfil', [MiCuentaController::class, 'profile'])->name('portal.perfil');
+            Route::get('/urbanizaciones', [MiCuentaController::class, 'urbanizaciones'])->name('portal.urbanizaciones');
+            Route::get('/reserva-visitas', [MiCuentaController::class, 'visitas'])->name('portal.visitas');
             Route::get('/terrenos/{venta}', [MiCuentaController::class, 'show'])->name('portal.terrenos.show');
             Route::get('/terrenos/{venta}/pagar', [MiCuentaController::class, 'pay'])->name('portal.pagar');
             Route::post('/terrenos/{venta}/pagar', [MiCuentaController::class, 'storePayment'])->name('portal.pagar.store');
@@ -115,7 +124,8 @@ Route::middleware('auth')->group(function (): void {
             Route::resource('reservas', ReservaController::class)->except('show')->middlewareFor(['index'], 'can:ver reservas')->middlewareFor(['create', 'store'], 'can:crear reservas')->middlewareFor(['destroy'], 'can:cancelar reservas');
             Route::get('reservas/{reserva}/recibo', [PdfController::class, 'reservationReceipt'])->name('reservas.recibo');
             Route::post('reservas/{reserva}/vencer', [ReservaController::class, 'expire'])->middleware('can:cancelar reservas')->name('reservas.expire');
-            Route::resource('cuotas', CuotaController::class)->middleware('can:cobrar cuotas')->only('index', 'update');
+            Route::get('/cuotas', fn () => redirect()->route('cobranza.index'))->middleware('can:cobrar cuotas')->name('cuotas.index');
+            Route::put('/cuotas/{cuota}', [CuotaController::class, 'update'])->middleware('can:cobrar cuotas')->name('cuotas.update');
             Route::get('/lotes-importar', [LotImportController::class, 'create'])->middleware('can:crear lotes')->name('lotes.import.create');
             Route::post('/lotes-importar/preview', [LotImportController::class, 'preview'])->middleware('can:crear lotes')->name('lotes.import.preview');
             Route::post('/lotes-importar', [LotImportController::class, 'store'])->middleware('can:crear lotes')->name('lotes.import.store');
@@ -172,6 +182,14 @@ Route::middleware('auth')->group(function (): void {
                 Route::get('/usuarios/{usuario}/edit', [UsuarioController::class, 'edit'])->name('usuarios.edit');
                 Route::put('/usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
                 Route::delete('/usuarios/{usuario}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
+                Route::post('/usuarios/{usuario}/foto', [UsuarioController::class, 'updatePhoto'])->name('usuarios.foto.update');
+                Route::delete('/usuarios/{usuario}/foto', [UsuarioController::class, 'deletePhoto'])->name('usuarios.foto.destroy');
+                Route::get('/usuarios-compradores', [CompradorUsuarioController::class, 'index'])->name('compradores');
+                Route::post('/usuarios-compradores/{cliente}/acceso', [CompradorUsuarioController::class, 'createAccess'])->name('compradores.acceso');
+                Route::post('/usuarios-compradores/{cliente}/reset-password', [CompradorUsuarioController::class, 'resetPassword'])->name('compradores.reset-password');
+                Route::post('/usuarios-compradores/{cliente}/estado', [CompradorUsuarioController::class, 'toggleAccess'])->name('compradores.estado');
+                Route::post('/usuarios-compradores/{cliente}/foto', [CompradorUsuarioController::class, 'updatePhoto'])->name('compradores.foto.update');
+                Route::delete('/usuarios-compradores/{cliente}/foto', [CompradorUsuarioController::class, 'deletePhoto'])->name('compradores.foto.destroy');
 
                 Route::get('/roles-permisos', function () {
                     $roles = Role::with('permissions')
@@ -197,6 +215,7 @@ Route::middleware('auth')->group(function (): void {
                 Route::get('/backups', function () {
                     return view('administracion.backups.index');
                 })->name('backups');
+                Route::resource('noticias', NoticiaController::class)->except('show');
             });
         });
         Route::get('/exportar/{tipo}', ExportController::class)->middleware('can:exportar reportes')->name('export.csv');

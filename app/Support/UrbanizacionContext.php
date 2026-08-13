@@ -31,7 +31,8 @@ class UrbanizacionContext
     {
         $query = Urbanizacion::query()->where('estado', 'activa')->orderBy('nombre');
 
-        if ($user->hasAnyRole(['vendedor', 'supervisor'])) {
+        if (! $user->hasAnyRole(['super administrador', 'administrador', 'gerente', 'cajero'])
+            && $user->hasAnyRole(['vendedor', 'supervisor'])) {
             $query->whereHas('asesores', fn (Builder $builder) => $builder
                 ->where('users.id', $user->id)
                 ->where('urbanizacion_user.activo', true));

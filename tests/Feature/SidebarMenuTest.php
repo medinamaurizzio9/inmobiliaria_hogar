@@ -49,6 +49,33 @@ class SidebarMenuTest extends TestCase
             ->assertSee('type="button"', false);
     }
 
+    public function test_finanzas_muestra_cobranza_y_caja_sin_modulo_visual_de_cuotas(): void
+    {
+        $this->seed();
+        $admin = User::where('email', 'admin@impacto.test')->firstOrFail();
+        $urbanizacion = Urbanizacion::firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['urbanizacion_id' => $urbanizacion->id])
+            ->get(route('cobranza.index'))
+            ->assertOk()
+            ->assertSee(route('cobranza.index'), false)
+            ->assertSee(route('caja.index'), false)
+            ->assertDontSee(route('cuotas.index'), false);
+    }
+
+    public function test_url_historica_de_cuotas_redirige_a_cobranza(): void
+    {
+        $this->seed();
+        $admin = User::where('email', 'admin@impacto.test')->firstOrFail();
+        $urbanizacion = Urbanizacion::firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['urbanizacion_id' => $urbanizacion->id])
+            ->get('/cuotas')
+            ->assertRedirect(route('cobranza.index'));
+    }
+
     public function test_ruta_configuracion_comercial_deja_administracion_abierto(): void
     {
         $this->seed();

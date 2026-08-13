@@ -111,7 +111,7 @@ class SystemSettingsService
     {
         foreach (self::KEYS as $key) {
             if (array_key_exists($key, $data)) {
-                SystemSetting::updateOrCreate(['key' => $key], ['value' => $data[$key]]);
+                SystemSetting::updateOrCreate(['key' => $key], ['value' => $data[$key] === null ? '' : $data[$key]]);
             }
         }
 

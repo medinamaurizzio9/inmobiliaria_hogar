@@ -47,7 +47,12 @@ class SystemSettingController extends Controller
             'logo_login' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'login_background' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
             'logo_pdf' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_images' => ['nullable', 'array'],
+            'remove_images.*' => ['string', 'in:logo_main,logo_login,login_background,logo_pdf'],
         ]);
+
+        $removeImages = array_values(array_unique($data['remove_images'] ?? []));
+        unset($data['remove_images']);
 
         foreach (['logo_main', 'logo_login', 'logo_pdf'] as $logoKey) {
             if ($request->hasFile($logoKey)) {
@@ -56,6 +61,10 @@ class SystemSettingController extends Controller
         }
 
         $before = $settings->all();
+
+        foreach ($removeImages as $key) {
+            $data[$key] = null;
+        }
 
         if ($request->hasFile('login_background')) {
             if (! empty($before['login_background'])) {
@@ -69,6 +78,13 @@ class SystemSettingController extends Controller
         }
 
         $settings->setMany($data);
+
+        foreach ($removeImages as $key) {
+            $oldPath = $settings->normalizedPublicPath($before[$key] ?? null);
+            if ($oldPath !== null && ! str_contains($oldPath, '..')) {
+                Storage::disk('public')->delete($oldPath);
+            }
+        }
 
         foreach (['logo_main', 'logo_login', 'logo_pdf'] as $logoKey) {
             if (isset($data[$logoKey]) && ! empty($before[$logoKey])) {

@@ -1,0 +1,6 @@
+@extends('layouts.app')
+@section('title', 'Noticias')
+@section('content')
+<x-crm.page-header title="Noticias" subtitle="Publicaciones visibles en el portal público."><a class="btn" href="{{ route('admin.noticias.create') }}">Nueva noticia</a></x-crm.page-header>
+<div class="table-scroll"><table class="table"><thead><tr><th>Título</th><th>Publicación</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>@forelse($noticias as $noticia)<tr><td><strong>{{ $noticia->titulo }}</strong><small>{{ $noticia->resumen }}</small></td><td>{{ $noticia->fecha_publicacion?->format('d/m/Y H:i') ?? 'Sin fecha' }}</td><td><span class="badge {{ $noticia->publicada ? 'activa' : 'pendiente' }}">{{ $noticia->publicada ? 'Publicada' : 'Borrador' }}</span></td><td class="actions"><a class="btn secondary" href="{{ route('admin.noticias.edit', $noticia) }}">Editar</a><form method="POST" action="{{ route('admin.noticias.destroy', $noticia) }}" onsubmit="return confirm('¿Eliminar esta noticia?')">@csrf @method('DELETE')<button class="btn danger">Eliminar</button></form></td></tr>@empty<tr><td colspan="4"><x-crm.empty-state title="Aún no hay noticias" message="Crea la primera publicación para el portal." /></td></tr>@endforelse</tbody></table></div>{{ $noticias->links() }}
+@endsection

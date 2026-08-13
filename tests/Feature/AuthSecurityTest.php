@@ -90,7 +90,7 @@ class AuthSecurityTest extends TestCase
             'current_password' => 'temporal123',
             'password' => 'nueva-clave-segura',
             'password_confirmation' => 'nueva-clave-segura',
-        ])->assertRedirect(route('urbanizaciones.select'));
+        ])->assertRedirect(route('dashboard'));
 
         $this->assertFalse($user->fresh()->must_change_password);
 
@@ -98,7 +98,7 @@ class AuthSecurityTest extends TestCase
         $this->post(route('login.store'), [
             'email' => 'cambio.seguro@example.com',
             'password' => 'nueva-clave-segura',
-        ])->assertRedirect(route('urbanizaciones.select'));
+        ])->assertRedirect(route('dashboard'));
     }
 
     public function test_usuario_sin_must_change_password_no_ve_formulario_de_cambio_obligatorio(): void
@@ -114,7 +114,7 @@ class AuthSecurityTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('password.change'))
-            ->assertRedirect(route('urbanizaciones.select'));
+            ->assertRedirect(route('dashboard'));
     }
 
     public function test_logout_por_post_cierra_sesion_y_redirige_a_login(): void

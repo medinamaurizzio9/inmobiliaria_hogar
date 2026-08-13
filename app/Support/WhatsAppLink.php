@@ -20,15 +20,30 @@ class WhatsAppLink
         return $message !== '' ? $url.'?text='.rawurlencode($message) : $url;
     }
 
+    public static function urlWithMessage(?string $phone, string $message): ?string
+    {
+        $normalized = self::phone($phone);
+
+        if ($normalized === null) {
+            return null;
+        }
+
+        return 'https://wa.me/'.$normalized.($message !== '' ? '?text='.rawurlencode($message) : '');
+    }
+
     public static function phone(?string $phone): ?string
     {
         $digits = preg_replace('/\D+/', '', (string) $phone);
 
-        if ($digits === '') {
+        if (preg_match('/^591[67]\d{7}$/', $digits) === 1) {
+            return $digits;
+        }
+
+        if (preg_match('/^[67]\d{7}$/', $digits) !== 1) {
             return null;
         }
 
-        return str_starts_with($digits, '591') ? $digits : '591'.$digits;
+        return '591'.$digits;
     }
 
     private static function message(?string $name, ?string $phone): string

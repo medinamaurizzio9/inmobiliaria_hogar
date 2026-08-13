@@ -6,11 +6,11 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Hidden(['password', 'remember_token'])]
@@ -45,6 +45,11 @@ class User extends Authenticatable
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function profilePhotoPath(): ?string
+    {
+        return $this->cliente_id ? $this->cliente?->foto : $this->foto;
     }
 
     public function urbanizacionesAsignadas(): BelongsToMany

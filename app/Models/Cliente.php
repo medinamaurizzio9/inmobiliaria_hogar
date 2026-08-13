@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Cliente extends Model
 {
-    protected $fillable = ['urbanizacion_id', 'created_by', 'nombre', 'documento', 'telefono', 'email', 'direccion'];
+    protected $fillable = ['urbanizacion_id', 'created_by', 'nombre', 'documento', 'telefono', 'email', 'direccion', 'foto'];
 
     public function urbanizacion(): BelongsTo
     {

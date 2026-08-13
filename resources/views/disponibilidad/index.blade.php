@@ -10,6 +10,7 @@
 <body>
 <main class="public-page">
     @inject('pricingService', 'App\Services\LotPricingService')
+    @inject('whatsAppLink', 'App\Support\WhatsAppLink')
     <header class="public-header crm-public-header"><a class="public-brand" href="{{ route('disponibilidad.publica') }}">@if($systemSettings['logo_main_url'])<img src="{{ $systemSettings['logo_main_url'] }}" alt="{{ $systemSettings['system_name'] }}">@endif<span><strong>{{ $systemSettings['system_name'] }}</strong><small>{{ $systemSettings['system_subtitle'] }}</small></span></a><nav><a href="#urbanizaciones">Urbanizaciones</a><a href="#disponibles">Lotes disponibles</a><a href="#consulta">Contacto</a></nav><a class="btn secondary" href="{{ route('login') }}">Iniciar sesión</a></header>
 
     <section class="public-hero"><div><span class="eyebrow">Inversión inmobiliaria</span><h1>Encuentra el terreno para construir tu futuro</h1><p>Explora urbanizaciones, ubicaciones y lotes disponibles con información actualizada.</p><div class="actions"><a class="btn" href="#disponibles">Ver disponibilidad</a><a class="btn secondary" href="#consulta">Contactarnos</a></div></div><div class="public-hero-mark"><i class="fa-solid fa-building-circle-check"></i><strong>Disponibilidad real</strong><span>Consulta directa por urbanización</span></div></section>
@@ -95,7 +96,13 @@
                             <td>{{ $pricingService->formatUsd($pricePayload['credit_usd']) }}<br><span class="muted">{{ $pricingService->formatBs($pricePayload['credit_bs']) }}</span></td>
                         @endif
                         <td><span class="badge {{ $lote->estado }}">{{ $lote->estado }}</span></td>
-                        <td>@if($lote->estado === 'disponible')<a class="btn secondary" href="#consulta">Consultar con asesor</a>@endif</td>
+                        <td>
+                            @if($lote->estado === 'disponible')
+                                @php($lotWhatsappUrl = $whatsAppLink::urlWithMessage($whatsappPhone, "Hola, quisiera información sobre el lote {$lote->codigo} del manzano {$lote->manzano->codigo} de {$urbanizacion->nombre}."))
+                                <a class="btn secondary" href="{{ route('login') }}#contacto">Solicitar información</a>
+                                @if($lotWhatsappUrl)<a class="btn whatsapp" href="{{ $lotWhatsappUrl }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>@endif
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
                 </tbody>
@@ -105,7 +112,7 @@
         <section id="consulta" class="card public-cta">
             <h2>Consultar con asesor</h2>
             <p class="muted">Escribenos indicando urbanizacion, manzano y lote de interes para confirmar disponibilidad actual.</p>
-            <a class="btn" href="mailto:ventas@impacto.test?subject=Consulta%20de%20lote%20{{ urlencode($urbanizacion->nombre) }}">Consultar con asesor</a>
+            <a class="btn" href="{{ route('login') }}#contacto">Consultar con asesor</a>
         </section>
     @else
         <div class="card">No hay urbanizaciones disponibles.</div>
