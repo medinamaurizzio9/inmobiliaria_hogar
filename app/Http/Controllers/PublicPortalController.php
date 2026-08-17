@@ -18,7 +18,7 @@ class PublicPortalController extends Controller
             ? Urbanizacion::query()->where('estado', 'activa')->withLotStats()->orderBy('nombre')->get()
             : collect();
         $noticias = Schema::hasTable('noticias')
-            ? Noticia::publicadas()->latest('fecha_publicacion')->limit(3)->get()
+                ? Noticia::publicadas()->ordenPublico()->limit(3)->get()
             : collect();
         $totals = [
             'proyectos' => $urbanizaciones->count(),
@@ -37,7 +37,7 @@ class PublicPortalController extends Controller
         abort_unless(Schema::hasTable('noticias'), 404);
 
         $noticia = Noticia::publicadas()->where('slug', $slug)->firstOrFail();
-        $recientes = Noticia::publicadas()->whereKeyNot($noticia->id)->latest('fecha_publicacion')->limit(3)->get();
+        $recientes = Noticia::publicadas()->whereKeyNot($noticia->id)->ordenPublico()->limit(3)->get();
 
         return view('public.noticia', compact('noticia', 'recientes'));
     }

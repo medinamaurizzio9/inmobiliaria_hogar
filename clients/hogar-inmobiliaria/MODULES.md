@@ -79,6 +79,7 @@ Estados vigentes para esta implementación.
 - Documentos
 - API
 - Alertas internas
+- Noticias y novedades
 
 ## 3.2. Módulos en desarrollo (development)
 

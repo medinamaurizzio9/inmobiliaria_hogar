@@ -16,6 +16,61 @@ despliegue y el smoke test hayan ocurrido realmente.
 
 ## LAST_COMPLETED
 
+Módulo administrativo completo de Noticias y novedades.
+
+Resultado verificado:
+
+- Se reutilizaron `Noticia`, `NoticiaController`, portal público y vistas existentes; no se creó un CMS paralelo.
+- Administración muestra miniatura/fallback, título, fecha, estado, destacada, orden y acciones Editar, Publicar/Ocultar y Eliminar.
+- Formulario conserva slug automático y añade estado Borrador/Publicada, destacada y orden opcional; contenido continúa como textarea escapado, sin librerías pesadas.
+- Nueva migración `2026_08_16_000001_add_featured_and_order_to_noticias_table.php`, aplicada correctamente; mantiene `publicada` como fuente de estado compatible y añade `destacada` y `orden`.
+- Imágenes JPG/JPEG/PNG/WEBP hasta 4 MB usan disk `public` y `ManagedImageService`; reemplazo y eliminación limpian únicamente rutas seguras bajo `noticias/`.
+- Portal muestra solo publicaciones con fecha no futura, ordenadas por destacada, fecha descendente e ID descendente; las tarjetas usan placeholder si falta el archivo.
+- Detalle `/noticias/{slug}` mantiene branding, contenido escapado y devuelve 404 para borradores, futuras o inexistentes.
+- Administración continúa protegida por `can:administrar usuarios`, permiso exclusivo del administrador en la configuración real; vendedor, supervisor y cliente reciben 403.
+- Auditoría implementada: `noticia_creada`, `noticia_actualizada`, `noticia_publicada`, `noticia_ocultada` y `noticia_eliminada`.
+- `MODULES.md` registra Noticias y novedades como módulo habilitado. No se modificó lógica financiera ni se realizó commit o push.
+
+Pruebas:
+
+```text
+tests dirigidos: 20 passed, 117 assertions
+php artisan test: 540 passed, 2147 assertions
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: UAT visual del contenido editorial e imágenes reales.
+
+## PREVIOUS_COMPLETED_11
+
+Corrección del reporte Mejor vendedor con ámbito por urbanización y global.
+
+Resultado verificado:
+
+- Causa de los ceros: `SaleService` registra en `ventas.user_id` al usuario que ejecuta el cierre; cuando administración convertía una reserva, la venta quedaba atribuida al administrador y no al asesor originador.
+- Vendedor real del reporte: `reservas.usuario_id` en ventas convertidas desde reserva; `ventas.user_id` como fuente para ventas directas.
+- Urbanización real: `ventas.lote_id -> lotes.manzano_id -> manzanos.urbanizacion_id`; fecha de cierre: `ventas.fecha_venta`.
+- Solo cuentan ventas `activa` o `completada`; se excluyen anuladas, rescindidas y reservas sin venta. Monto vendido suma `ventas.precio_final` histórico pactado.
+- Ámbito predeterminado Urbanización actual aplica la sesión tanto a ventas como reservas. Ámbito Global ignora ese filtro de sesión y usa todas las urbanizaciones accesibles al usuario.
+- Se conservaron mes, año, supervisor, grupo y asesor; orden: ventas cerradas, monto vendido, conversión y desempate estable.
+- Listado, Excel y PDF reutilizan el mismo cálculo y reciben los mismos filtros y etiqueta de ámbito.
+- Las ventas y reservas del período se consultan una sola vez y se agrupan en memoria por vendedor real, sin consultas por fila.
+- No se modificaron datos, estados, ventas, reservas ni otros reportes. No se crearon migraciones ni se realizó commit o push.
+
+Pruebas:
+
+```text
+tests dirigidos: 13 passed, 61 assertions
+php artisan test: 534 passed, 2106 assertions
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: UAT con datos productivos históricos para confirmar casos antiguos sin `reserva_id`.
+
+## PREVIOUS_COMPLETED_10
+
 Corrección definitiva del flujo inicial del comprador y separación de Mi perfil.
 
 Resultado verificado:

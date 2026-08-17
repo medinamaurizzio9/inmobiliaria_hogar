@@ -9,7 +9,7 @@
         @php($logo = ($settings['logo_pdf_path'] ?? '') ?: ($settings['logo_main_path'] ?? ''))
         @if($logo)<img src="{{ $logo }}" style="max-height:70px;" alt="Logo">@endif
         <h2>{{ $settings['system_name'] ?? 'IMPACTO URBANIZACIONES' }} - {{ $settings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</h2>
-        <div class="muted">Reporte mejor vendedor {{ $urbanizacion?->nombre ? ' - '.$urbanizacion->nombre : '' }} | {{ $mes }}/{{ $anio }}</div>
+        <div class="muted">Reporte mejor vendedor - {{ $ambitoLabel }} | {{ $mes }}/{{ $anio }}</div>
     </div>
     <table>
         <thead><tr><th>Ranking</th><th>Asesor</th><th>Supervisor</th><th>Reservas</th><th>Activas</th><th>Canceladas</th><th>Vencidas</th><th>Convertidas</th><th>Ventas</th><th>Monto</th><th>Conversion</th></tr></thead>

@@ -9,6 +9,7 @@
 </div>
 
 <form class="card form" method="GET">
+    <div class="field"><label>Ambito</label><select name="ambito"><option value="urbanizacion" @selected($ambito === 'urbanizacion')>Urbanizacion actual</option><option value="global" @selected($ambito === 'global')>Global</option></select></div>
     <div class="field"><label>Mes</label><input type="number" name="mes" min="1" max="12" value="{{ $mes }}"></div>
     <div class="field"><label>Anio</label><input type="number" name="anio" min="2020" max="2100" value="{{ $anio }}"></div>
     @if(auth()->user()->hasAnyRole(['administrador', 'gerente']))
@@ -21,6 +22,7 @@
 
 <div class="card" style="margin-top:18px;" data-report="mejor-vendedor">
     <h2>Ranking comercial</h2>
+    <p class="muted">Ambito: <strong>{{ $ambitoLabel }}</strong></p>
     <table class="table">
         <thead><tr><th>Ranking</th><th>Asesor</th><th>Supervisor</th><th>Reservas</th><th>Activas</th><th>Canceladas</th><th>Vencidas</th><th>Convertidas</th><th>Ventas cerradas</th><th>Monto vendido</th><th>Conversion %</th></tr></thead>
         <tbody>

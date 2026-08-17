@@ -155,7 +155,7 @@
                         <a @class(['sidebar-link', 'active' => $active('admin.compradores*')]) href="{{ route('admin.compradores') }}">Usuarios compradores</a>
                         <a @class(['sidebar-link', 'active' => $active('admin.roles')]) href="{{ route('admin.roles') }}">Roles y permisos</a>
                         <a @class(['sidebar-link', 'active' => $active('admin.configuracion-general')]) href="{{ route('admin.configuracion-general') }}">Configuracion general</a>
-                        <a @class(['sidebar-link', 'active' => $active('admin.noticias.*')]) href="{{ route('admin.noticias.index') }}">Noticias</a>
+                        <a @class(['sidebar-link', 'active' => $active('admin.noticias.*')]) href="{{ route('admin.noticias.index') }}">Noticias y novedades</a>
                     @endif
                     <a @class(['sidebar-link', 'active' => $active('admin.configuracion')]) href="{{ route('admin.configuracion') }}">Configuracion comercial</a>
                     <a @class(['sidebar-link', 'active' => $active('admin.configuracion-financiera')]) href="{{ route('admin.configuracion-financiera') }}">Configuracion financiera</a>

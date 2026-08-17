@@ -215,6 +215,7 @@ Route::middleware('auth')->group(function (): void {
                 Route::get('/backups', function () {
                     return view('administracion.backups.index');
                 })->name('backups');
+                Route::post('/noticias/{noticia}/estado', [NoticiaController::class, 'toggle'])->name('noticias.toggle');
                 Route::resource('noticias', NoticiaController::class)->except('show');
             });
         });

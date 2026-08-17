@@ -218,6 +218,8 @@ class ReportController extends Controller
 
     public function mejorVendedor(Request $request, ReservationVisibilityService $visibility): View
     {
+        $ambito = $this->mejorVendedorAmbito($request);
+
         return view('reportes.mejor-vendedor', [
             'ranking' => $this->mejorVendedorRanking($request, $visibility),
             'vendedores' => $visibility->vendedores($request->user()),
@@ -225,6 +227,8 @@ class ReportController extends Controller
             'grupos' => $this->gruposDisponibles($request),
             'mes' => $request->integer('mes') ?: now()->month,
             'anio' => $request->integer('anio') ?: now()->year,
+            'ambito' => $ambito,
+            'ambitoLabel' => $this->mejorVendedorAmbitoLabel($request, $ambito),
         ]);
     }
 
@@ -234,7 +238,12 @@ class ReportController extends Controller
         $auditService->log(null, 'exportar_reporte_mejor_vendedor', 'Exportacion Excel del reporte mejor vendedor.', null, $request->query(), $request);
 
         return response()
-            ->view('reportes.exports.mejor-vendedor-excel', ['ranking' => $ranking])
+            ->view('reportes.exports.mejor-vendedor-excel', [
+                'ranking' => $ranking,
+                'mes' => $request->integer('mes') ?: now()->month,
+                'anio' => $request->integer('anio') ?: now()->year,
+                'ambitoLabel' => $this->mejorVendedorAmbitoLabel($request),
+            ])
             ->header('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="reporte-mejor-vendedor-impacto.xls"');
     }
@@ -246,7 +255,7 @@ class ReportController extends Controller
 
         return Pdf::loadView('pdf.reporte-mejor-vendedor', [
             'ranking' => $ranking,
-            'urbanizacion' => UrbanizacionContext::current(),
+            'ambitoLabel' => $this->mejorVendedorAmbitoLabel($request),
             'mes' => $request->integer('mes') ?: now()->month,
             'anio' => $request->integer('anio') ?: now()->year,
             'settings' => $settings->all(),
@@ -366,42 +375,78 @@ class ReportController extends Controller
             $vendedores = $vendedores->whereIn('id', $asesorUserIds)->values();
         }
 
-        $ranking = $vendedores->map(function (User $vendedor) use ($desde, $hasta) {
-            $reservas = UrbanizacionContext::reservas(Reserva::query(), UrbanizacionContext::currentId())
-                ->where('usuario_id', $vendedor->id)
-                ->whereBetween('fecha_reserva', [$desde, $hasta])
-                ->get();
+        $vendedorIds = $vendedores->pluck('id');
+        $urbanizacionIds = $this->mejorVendedorUrbanizacionIds($request);
+        $reservas = Reserva::query()
+            ->whereIn('usuario_id', $vendedorIds)
+            ->whereBetween('fecha_reserva', [$desde, $hasta])
+            ->whereHas('lote.manzano', fn (Builder $query) => $query->whereIn('urbanizacion_id', $urbanizacionIds))
+            ->get()
+            ->groupBy('usuario_id');
+        $ventas = Venta::query()
+            ->with('reserva:id,usuario_id')
+            ->whereBetween('fecha_venta', [$desde, $hasta])
+            ->whereIn('estado', ['activa', 'completada'])
+            ->whereHas('lote.manzano', fn (Builder $query) => $query->whereIn('urbanizacion_id', $urbanizacionIds))
+            ->get()
+            ->filter(fn (Venta $venta) => $vendedorIds->contains($venta->reserva?->usuario_id ?? $venta->user_id))
+            ->groupBy(fn (Venta $venta) => $venta->reserva?->usuario_id ?? $venta->user_id);
+        $asesores = Asesor::with('supervisor')->whereIn('user_id', $vendedorIds)->get()->keyBy('user_id');
 
-            $ventas = UrbanizacionContext::ventas(Venta::query(), UrbanizacionContext::currentId())
-                ->where('user_id', $vendedor->id)
-                ->whereBetween('fecha_venta', [$desde, $hasta])
-                ->whereIn('estado', ['activa', 'completada'])
-                ->get();
-
-            $asesor = Asesor::with('supervisor')->where('user_id', $vendedor->id)->first();
-            $totalReservas = $reservas->count();
-            $ventasCerradas = $ventas->count();
+        $ranking = $vendedores->map(function (User $vendedor) use ($reservas, $ventas, $asesores) {
+            $reservasVendedor = $reservas->get($vendedor->id, collect());
+            $ventasVendedor = $ventas->get($vendedor->id, collect());
+            $asesor = $asesores->get($vendedor->id);
+            $totalReservas = $reservasVendedor->count();
+            $ventasCerradas = $ventasVendedor->count();
 
             return [
+                'vendedor_id' => $vendedor->id,
                 'asesor' => $vendedor->name,
                 'supervisor' => $asesor?->supervisor?->name ?? '-',
                 'reservas' => $totalReservas,
-                'activas' => $reservas->where('estado', 'activa')->count(),
-                'canceladas' => $reservas->where('estado', 'cancelada')->count(),
-                'vencidas' => $reservas->where('estado', 'vencida')->count(),
-                'convertidas' => $reservas->where('estado', 'convertida')->count(),
+                'activas' => $reservasVendedor->where('estado', 'activa')->count(),
+                'canceladas' => $reservasVendedor->where('estado', 'cancelada')->count(),
+                'vencidas' => $reservasVendedor->where('estado', 'vencida')->count(),
+                'convertidas' => $reservasVendedor->where('estado', 'convertida')->count(),
                 'ventas_cerradas' => $ventasCerradas,
-                'monto_vendido' => (float) $ventas->sum('precio_final'),
+                'monto_vendido' => (float) $ventasVendedor->sum('precio_final'),
                 'conversion' => $totalReservas > 0 ? round(($ventasCerradas / $totalReservas) * 100, 2) : 0,
             ];
-        })->sort(function (array $a, array $b) {
-            return [$b['monto_vendido'], $b['ventas_cerradas'], $b['reservas']]
-                <=> [$a['monto_vendido'], $a['ventas_cerradas'], $a['reservas']];
+        })->filter(fn (array $row) => $row['reservas'] > 0 || $row['ventas_cerradas'] > 0)->sort(function (array $a, array $b) {
+            foreach (['ventas_cerradas', 'monto_vendido', 'conversion'] as $metric) {
+                if ($a[$metric] !== $b[$metric]) {
+                    return $b[$metric] <=> $a[$metric];
+                }
+            }
+
+            return [$a['asesor'], $a['vendedor_id']] <=> [$b['asesor'], $b['vendedor_id']];
         })->values();
 
         return $ranking->map(function (array $row, int $index) {
             return ['ranking' => $index + 1, ...$row];
         });
+    }
+
+    private function mejorVendedorAmbito(Request $request): string
+    {
+        return $request->query('ambito') === 'global' ? 'global' : 'urbanizacion';
+    }
+
+    private function mejorVendedorUrbanizacionIds(Request $request): Collection
+    {
+        $accesibles = UrbanizacionContext::accessibleUrbanizaciones($request->user())->pluck('id');
+
+        return $this->mejorVendedorAmbito($request) === 'global'
+            ? $accesibles
+            : $accesibles->filter(fn (int $id) => $id === UrbanizacionContext::currentId())->values();
+    }
+
+    private function mejorVendedorAmbitoLabel(Request $request, ?string $ambito = null): string
+    {
+        return ($ambito ?? $this->mejorVendedorAmbito($request)) === 'global'
+            ? 'Todas las urbanizaciones'
+            : (UrbanizacionContext::current()?->nombre ?? 'Urbanización actual');
     }
 
     private function applyDateRange(Builder $query, Request $request, string $column): void
