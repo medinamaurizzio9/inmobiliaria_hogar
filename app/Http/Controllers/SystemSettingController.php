@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
 use App\Services\AuditService;
+use App\Services\ManagedImageService;
 use App\Services\SystemSettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class SystemSettingController extends Controller
         ]);
     }
 
-    public function update(Request $request, SystemSettingsService $settings, AuditService $auditService): RedirectResponse
+    public function update(Request $request, SystemSettingsService $settings, AuditService $auditService, ManagedImageService $images): RedirectResponse
     {
         $request->merge([
             'public_base_url' => trim((string) $request->input('public_base_url', '')),
@@ -43,10 +44,10 @@ class SystemSettingController extends Controller
             'footer_text' => ['nullable', 'string', 'max:255'],
             'primary_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'secondary_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'logo_main' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'logo_login' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'login_background' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
-            'logo_pdf' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'logo_main' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'logo_login' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'login_background' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
+            'logo_pdf' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'remove_images' => ['nullable', 'array'],
             'remove_images.*' => ['string', 'in:logo_main,logo_login,login_background,logo_pdf'],
         ]);
@@ -56,7 +57,8 @@ class SystemSettingController extends Controller
 
         foreach (['logo_main', 'logo_login', 'logo_pdf'] as $logoKey) {
             if ($request->hasFile($logoKey)) {
-                $data[$logoKey] = $request->file($logoKey)->store('logos', 'public');
+                $oldPath = $settings->normalizedPublicPath($settings->all()[$logoKey] ?? null);
+                $data[$logoKey] = $images->replaceOptimized($oldPath, $request->file($logoKey), 'logos', ['max_width' => 800, 'max_height' => 800, 'quality' => 85])['path'];
             }
         }
 
@@ -67,14 +69,8 @@ class SystemSettingController extends Controller
         }
 
         if ($request->hasFile('login_background')) {
-            if (! empty($before['login_background'])) {
-                $oldBackground = $settings->normalizedPublicPath($before['login_background']);
-                if ($oldBackground !== null) {
-                    Storage::disk('public')->delete($oldBackground);
-                }
-            }
-
-            $data['login_background'] = $request->file('login_background')->store('login-backgrounds', 'public');
+            $oldBackground = $settings->normalizedPublicPath($before['login_background'] ?? null);
+            $data['login_background'] = $images->replaceOptimized($oldBackground, $request->file('login_background'), 'login-backgrounds', ['max_width' => 1920, 'max_height' => 1920, 'quality' => 82])['path'];
         }
 
         $settings->setMany($data);
@@ -83,15 +79,6 @@ class SystemSettingController extends Controller
             $oldPath = $settings->normalizedPublicPath($before[$key] ?? null);
             if ($oldPath !== null && ! str_contains($oldPath, '..')) {
                 Storage::disk('public')->delete($oldPath);
-            }
-        }
-
-        foreach (['logo_main', 'logo_login', 'logo_pdf'] as $logoKey) {
-            if (isset($data[$logoKey]) && ! empty($before[$logoKey])) {
-                $oldPath = $settings->normalizedPublicPath($before[$logoKey]);
-                if ($oldPath !== null && $oldPath !== $data[$logoKey]) {
-                    Storage::disk('public')->delete($oldPath);
-                }
             }
         }
 

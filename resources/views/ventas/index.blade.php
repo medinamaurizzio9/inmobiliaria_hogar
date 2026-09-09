@@ -72,7 +72,7 @@
 </div>
 
 <div class="table-scroll">
-    <table class="table">
+    <table class="table responsive-table commercial-list">
         <thead>
             <tr>
                 <th><x-sort-link field="fecha">Fecha</x-sort-link></th>
@@ -90,16 +90,16 @@
         <tbody>
             @forelse ($ventas as $venta)
                 <tr>
-                    <td>{{ $venta->fecha_venta->format('d/m/Y') }}</td>
-                    <td>{{ $venta->cliente->nombre }}</td>
-                    <td>{{ $venta->lote->manzano->codigo }}-{{ $venta->lote->codigo }}</td>
-                    <td>{{ $venta->tipo_operacion ?: 'Sin registrar' }}</td>
-                    <td>{{ number_format((float) ($venta->precio_final_usd ?? $venta->precio_final), 2) }}<br><span class="muted">Bs {{ $venta->precio_final_bs ? number_format((float) $venta->precio_final_bs, 2) : 'Sin registrar' }}</span></td>
-                    <td>{{ number_format($venta->cuota_inicial, 2) }}</td>
-                    <td>{{ number_format($venta->saldo_financiar, 2) }}</td>
-                    <td>{{ $venta->cuotas->count() }}</td>
-                    <td><span class="badge {{ $venta->estado }}">{{ $venta->estado }}</span></td>
-                    <td class="actions">
+                    <td data-label="Fecha">{{ $venta->fecha_venta->format('d/m/Y') }}</td>
+                    <td data-label="Cliente"><strong>{{ $venta->cliente->nombre }}</strong></td>
+                    <td data-label="Lote">{{ $venta->lote->manzano->codigo }}-{{ $venta->lote->codigo }}</td>
+                    <td data-label="Tipo">{{ $venta->tipo_operacion ?: 'Sin registrar' }}</td>
+                    <td data-label="Precio">{{ number_format((float) ($venta->precio_final_usd ?? $venta->precio_final), 2) }}<br><span class="muted">Bs {{ $venta->precio_final_bs ? number_format((float) $venta->precio_final_bs, 2) : 'Sin registrar' }}</span></td>
+                    <td data-label="Cuota inicial">{{ number_format($venta->cuota_inicial, 2) }}</td>
+                    <td data-label="Saldo">{{ number_format($venta->saldo_financiar, 2) }}</td>
+                    <td data-label="Cuotas">{{ $venta->cuotas->count() }}</td>
+                    <td data-label="Estado"><span class="badge {{ $venta->estado }}">{{ $venta->estado }}</span></td>
+                    <td class="actions" data-label="Acciones">
                         <a class="btn secondary" href="{{ route('ventas.show', $venta) }}">Ver</a>
                         @if(auth()->user()->hasRole('administrador') && auth()->user()->can('editar ventas') && ($venta->estado !== 'anulada' || auth()->user()->can('editar ventas anuladas')))
                             <a class="btn secondary" href="{{ route('ventas.edit', $venta) }}">Editar</a>
@@ -117,7 +117,7 @@
                     </td>
                 </tr>
             @empty
-                <tr>
+                <tr class="responsive-empty">
                     <td colspan="10" class="empty-table">No se encontraron ventas con los filtros aplicados.</td>
                 </tr>
             @endforelse

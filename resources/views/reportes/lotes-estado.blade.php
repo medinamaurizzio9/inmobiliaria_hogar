@@ -24,4 +24,5 @@
         @endforelse
     </tbody></table>
 </div>
+{{ $lotes->links() }}
 @endsection

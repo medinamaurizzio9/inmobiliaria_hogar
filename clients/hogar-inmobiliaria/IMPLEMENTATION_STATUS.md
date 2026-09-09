@@ -4,7 +4,7 @@ Estado real: `ready_for_acceptance`
 
 Rama: `hogar-inmobiliaria`
 
-Fecha de actualización: 2026-08-13
+Fecha de actualización: 2026-09-09
 
 ## NEXT_TASK
 
@@ -15,6 +15,255 @@ desplegar siguiendo `docs/09-DEPLOYMENT.md`. No marcar producción hasta que el
 despliegue y el smoke test hayan ocurrido realmente.
 
 ## LAST_COMPLETED
+
+Auditoría y optimización de rendimiento basada en mediciones locales.
+
+Resultado verificado:
+
+- Se añadió `scripts/performance-audit.php`, auditor de solo lectura para rutas públicas y autenticadas que registra estado HTTP, tiempo aproximado, queries, duplicadas, tiempo SQL, consulta más lenta, memoria incremental y tamaño HTML.
+- Causa principal: `CommercialSettingsService::settings()` ejecutaba `Urbanizacion::exists()` y `firstOrCreate()` cada vez que `LotPricingService` solicitaba un dato. Como `payload()` consulta varios valores por lote, `/lotes` llegó a 1.679 queries y `/disponibilidad`/`/u/{slug}` a 283.
+- La configuración comercial ahora se resuelve una vez por urbanización y por instancia del servicio, con invalidación inmediata después de cada actualización. Las fórmulas y valores comerciales no cambiaron.
+- Dashboard administrativo reutiliza agregados por estado y consolida ventas/reservas. Dashboard asesor bajó de 45 a 36 queries; administrador de 48 a 39 y supervisor de 28 a 27.
+- Cobranza consolida cinco agregados diarios en una consulta condicional, sin cambiar montos ni estados; pasó de 38 a 35 queries en la medición local.
+- La página pública elimina una consulta de urbanizaciones no utilizada y selecciona solo columnas requeridas de urbanización, configuración, características, manzanos y lotes.
+- Reportes de lotes, reservas, cuotas e ingresos se paginan a 50 filas en pantalla; exportaciones conservan el dataset completo. Los indicadores se calculan con agregados SQL sobre todo el filtro, no solo sobre la página.
+- Reportes de cuotas redujo 21 a 19 queries y su HTML de 36,7 KB a 28,4 KB con los datos locales. Ingresos bajó de 17 a 16 queries. El índice de reportes bajó de 16 a 15.
+- Las imágenes secundarias del plano público y QR usan carga diferida; la imagen principal del hero mantiene su estrategia LCP.
+- No se añadieron índices: los filtros críticos ya cuentan con índices y ninguna consulta individual superó 8,2 ms en la muestra actual. El problema medido era fan-out de queries, no infraestructura.
+- No se modificaron permisos, reglas financieras, coordenadas, zoom, estados, service worker ni datos. No se añadieron Redis, Octane, CDN ni migraciones.
+
+Medición local representativa antes/después:
+
+```text
+/lotes:                    872,00 ms / 1.679 queries -> 81,50 ms / 25 queries
+/disponibilidad:           179,94 ms /   283 queries -> 54,16 ms / 19 queries
+/u/{slug}:                 150,38 ms /   283 queries -> 35,11 ms / 19 queries
+/dashboard administrador:   83,47 ms /    48 queries -> 75,59 ms / 39 queries
+/dashboard asesor:          62,23 ms /    45 queries -> 54,51 ms / 36 queries
+/dashboard supervisor:      53,17 ms /    28 queries -> 39,58 ms / 27 queries
+/cobranza:                  84,86 ms /    38 queries -> 85,58 ms / 35 queries
+```
+
+El mapa público no serializa modelos como JSON: genera marcadores HTML. Su respuesta total permaneció funcionalmente estable (17,2 KB antes, 17,3 KB después por atributos `loading`/`decoding`), mientras la consulta de lotes dejó de seleccionar observaciones y timestamps no usados.
+
+Pruebas:
+
+```text
+php artisan optimize:clear: passed
+php artisan test --filter=PerformanceRegressionTest: 3 passed, 18 assertions
+php artisan test: 584 passed, 2369 assertions
+npm.cmd run build: passed
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+php artisan config:cache: passed
+php artisan route:cache: passed
+php artisan view:cache: passed
+```
+
+Pendiente real: la muestra posterior con las tres cachés activas no pudo repetirse porque el proceso MySQL de Laragon se detuvo y `127.0.0.1:3306` rechazó la conexión. Las mediciones posteriores sin cachés sí fueron completadas. Repetir `php scripts/performance-audit.php` cuando MySQL esté activo. Mantener este trabajo pendiente para el commit consolidado posterior.
+
+## PREVIOUS_COMPLETED_19
+
+Responsive comercial para supervisor/asesor y preparación base PWA.
+
+Resultado verificado:
+
+- El topbar móvil incorpora branding compacto, hamburguesa, nombre de usuario y menú con perfil/seguridad y cierre de sesión.
+- El sidebar conserva el comportamiento de escritorio y funciona como drawer en móvil con overlay, cierre al navegar o pulsar Escape, bloqueo de scroll, retorno de foco y trampa de foco accesible.
+- Dashboard supervisor prioriza reservas, equipo y ventas; el detalle de asesores se convierte en cards móviles. Dashboard asesor incorpora accesos táctiles a nueva reserva, lotes, clientes, perfil y urbanizaciones asignadas.
+- Listados de clientes, reservas, ventas y urbanizaciones mantienen tablas en escritorio y se convierten en cards con información esencial y acciones de al menos 44 px en móvil.
+- Formularios y filtros pasan a una columna, controles de al menos 44 px y acciones principales de ancho completo en móvil.
+- Portal, página pública por urbanización, video, características, CTA y modal mantienen responsive. El mapa conserva zoom, pinch, paneo, marcadores de 28 px y modal, con superficie táctil contenida para evitar scroll accidental.
+- Corrección puntual del login móvil: el checkbox `remember` queda aislado de los estilos globales de inputs, mide 18 × 18 px y permanece alineado con su texto dentro de una etiqueta completamente pulsable. El modal conserva margen lateral, scroll vertical seguro y controles táctiles.
+- El menú del header público conserva logo, botón Ingresar y hamburguesa; ahora también se cierra al seleccionar un enlace, tocar fuera o pulsar Escape.
+- PWA base: manifest público, iconos estáticos 192/512 derivados del logo existente, metadatos, registro de service worker y pantalla offline simple.
+- El service worker solo interviene en GET; usa network-first para navegación y nunca guarda HTML autenticado. Cachea únicamente CSS, JS, manifest e iconos públicos. POST/PUT/PATCH/DELETE y endpoints de negocio permanecen en red.
+- Se mantiene la autenticación Laravel y no se creó SPA, login paralelo ni lógica de negocio nueva.
+
+Pruebas:
+
+```text
+php artisan optimize:clear: passed
+php artisan test --filter=PwaResponsiveTest: 8 passed, 64 assertions
+php artisan test --filter=CommercialReservationRulesTest: 8 passed, 32 assertions
+php artisan test: 581 passed, 2351 assertions
+npm.cmd run build: passed
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: validar manualmente en Chrome DevTools 390x844, 430x932, 768x1024 y 1024x1366, incluida la pestaña Application/Manifest/Service Workers. El navegador integrado negó acceso al servidor local durante esta tarea, por lo que no se declara instalabilidad visualmente comprobada. Incluir este trabajo junto con fix CSV 500, optimización de planos y página pública en el commit completo posterior.
+
+## PREVIOUS_COMPLETED_18
+
+Optimización automática de planos raster mayores de 2 MB.
+
+Resultado verificado:
+
+- Se reutilizó `ManagedImageService`; no se creó un segundo sistema de imágenes ni se modificaron mapa, zoom, estados o coordenadas.
+- Raster JPG/JPEG/PNG/WEBP de hasta 2 MB conserva el procesamiento existente. Si supera 2 MB mantiene exactamente ancho y alto originales y se recodifica preferentemente a WebP.
+- Compresión adaptativa: calidad 88, 85, 82, 80 y 78, deteniéndose al alcanzar 2 MB. Si no alcanza el objetivo, conserva la salida de calidad mínima segura y muestra una advertencia sin reducir resolución.
+- La recodificación GD elimina metadatos no necesarios, valida el contenido real y usa nombres UUID y rutas controladas.
+- Orden de reemplazo corregido: procesar, verificar existencia, actualizar BD y recién entonces eliminar plano/thumbnail anterior. Un fallo mantiene el plano previo.
+- La página pública y el mapa continúan usando `urbanizaciones.plano_imagen`; `coord_x` y `coord_y` no se actualizan durante la carga.
+- PDF conserva su flujo previo de conversión y original funcional. No se crearon migraciones.
+
+Medición reproducible con PNG sintético:
+
+```text
+entrada: 2200x1400, 9,256,425 bytes, PNG
+salida: 2200x1400, 5,608 bytes, WebP calidad 88
+```
+
+El fixture es altamente compresible; no se afirma que todo plano pueda quedar por debajo de 2 MB sin reducir resolución.
+
+Pruebas:
+
+```text
+tests dirigidos de imágenes/planos/mapa: 29 passed, 123 assertions
+php artisan test --filter=Urbanizacion: 59 passed, 286 assertions
+php artisan test --filter=Map: 27 passed, 167 assertions
+php artisan test: 573 passed, 2287 assertions
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: incluir esta tarea en el commit completo posterior y validar con un plano productivo complejo en staging.
+
+## PREVIOUS_COMPLETED_17
+
+Corrección del error 500 en el importador CSV de lotes.
+
+Resultado verificado:
+
+- Causa raíz: `array_pad()` completaba silenciosamente filas con columnas faltantes y no truncaba filas con columnas adicionales; estas últimas llegaban a `array_combine()` con distinta cantidad de claves y valores y provocaban `ValueError`.
+- Antes de combinar se valida la cantidad exacta de columnas. Una fila incorrecta informa línea, columnas esperadas/encontradas y recomendaciones sobre separadores, comas y campos vacíos.
+- Se conservan los tres encabezados admitidos, BOM UTF-8, delimitadores coma/punto y coma y parsing real mediante `fgetcsv`/`str_getcsv`.
+- Las líneas completamente vacías se omiten; archivos vacíos, ilegibles o con solo cabecera devuelven errores controlados.
+- Campos vacíos conservan su posición y comas entre comillas permanecen dentro del mismo campo.
+- Preview con errores elimina las filas de sesión y no crea lotes. La confirmación completa ahora usa una transacción para impedir escrituras parciales ante fallos.
+- No se crearon migraciones ni se modificó lógica financiera.
+
+Pruebas:
+
+```text
+regresión del importador: 19 passed, 69 assertions
+php artisan test --filter=Lot: 69 passed, 305 assertions
+php artisan test: 567 passed, 2259 assertions
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: desplegar mediante el proceso autorizado y repetir el CSV problemático en staging; esta tarea trabajó únicamente en local.
+
+## PREVIOUS_COMPLETED_16
+
+Mejora visual y UX de la página pública por urbanización.
+
+Resultado verificado:
+
+- Se compactaron hero, video/descripción, características, plano, CTA y footer bajo un ancho coherente de hasta 1280 px.
+- Header con mayor presencia de logo, botón de login con gradiente de marca y tamaños adaptativos para desktop, tablet y móvil.
+- CTA primario del hero reforzado y WhatsApp convertido a verde profesional con estados hover accesibles.
+- Video/descripción usan columnas 50/50; características ocupan 3, 2 y 1 columnas según breakpoint, con tarjetas más amplias.
+- Causa de baja visibilidad de marcadores corregida: tamaño global máximo de 22/16 px, `pointer-events: none`, borde público eliminado y `z-index: 2`.
+- Marcadores públicos ahora miden 32 px desktop y 28–29 px móvil, usan borde blanco de 3 px, sombra, colores de alto contraste, hover y selección visible.
+- Coordenadas y zoom no se modificaron: imagen y puntos permanecen dentro del mismo `plan-map-layer` transformado. El paneo ignora el marcador para preservar el click.
+- Leyenda ampliada y reubicada cerca del título; mapa mantiene proporción natural, zoom, navegación táctil y modal existente.
+- Prueba dirigida confirma simultáneamente un marcador disponible, vendido, reservado y bloqueado.
+
+Pruebas:
+
+```text
+tests dirigidos: 51 passed, 247 assertions
+php artisan test: 559 passed, 2227 assertions
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+npm.cmd run build: passed
+```
+
+Pendiente real: UAT visual humana con logo y plano productivos en 1920, 1600, 1366, 1024, 768, 430 y 390 px.
+
+## PREVIOUS_COMPLETED_15
+
+Corrección UX de la página pública por urbanización.
+
+Resultado verificado:
+
+- Se añadieron `titulo_descripcion` y `descripcion_principal` a la configuración pública existente; no se duplicaron tablas ni se creó otro CMS.
+- La navegación administrativa muestra claramente Datos generales y Página pública. La pantalla pública permite hero, video con preview seguro, descripción principal y hasta 10 características.
+- Orden público final: header, hero, video/descripción, características, plano interactivo, CTA WhatsApp y footer.
+- Se eliminó el grid/listado público completo de lotes. La disponibilidad masiva solo se presenta mediante el plano y sus conteos.
+- Todos los puntos ubicados muestran modal público según estado; únicamente Disponible ofrece WhatsApp. Reservado, Vendido y Bloqueado no incluyen enlace comercial.
+- El modal muestra precio solo cuando `mostrar_precio_publico` está activo. No expone comprador, cliente, deuda, cuotas, pagos ni reservas internas.
+- WhatsApp continúa usando Configuración General y ahora incluye urbanización, manzano, lote y superficie con encoding correcto.
+- Migración local aplicada: `2026_08_23_000002_add_description_to_urbanizacion_public_settings.php`.
+
+Pruebas:
+
+```text
+tests dirigidos: 47 passed, 231 assertions
+php artisan test: 559 passed, 2226 assertions
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: UAT visual humana con contenido real en 1920, 1366, 1024, 768, 430 y 390 px.
+
+## PREVIOUS_COMPLETED_14
+
+Rediseño y personalización de la página pública por urbanización.
+
+Resultado verificado:
+
+- `/u/{slug}` usa automáticamente nombre y ubicación de la urbanización, hero configurable con fallback, video YouTube seguro y hasta 10 bloques informativos ordenables/activables.
+- Administración incorpora `Urbanizaciones → Editar → Página pública`, protegida por `editar urbanizaciones`; el gerente actual no posee ese permiso y recibe 403.
+- Hero optimizado mediante `ManagedImageService` a un máximo de 1920 × 1080, calidad 82; reemplazo/eliminación preservan la imagen anterior hasta guardar la nueva configuración.
+- El mapa, plano, zoom, estados y QR existentes se conservan. Un lote disponible abre primero un diálogo con manzano, lote, superficie y estado; WhatsApp solo abre desde el CTA del diálogo.
+- WhatsApp usa exclusivamente Configuración General mediante `SystemSettingsService` y `WhatsAppLink`, con mensaje contextual sin datos privados ni financieros.
+- Nuevas tablas separadas de configuración comercial/financiera: `urbanizacion_public_settings` y `urbanizacion_public_features`.
+- Tests dirigidos de página pública y regresión relacionada: 46 passed, 212 assertions. Suite completa: 558 passed, 2207 assertions. Migración local aplicada.
+
+Pendiente real: UAT visual humana en los anchos objetivo y con contenido real de cada urbanización.
+
+## PREVIOUS_COMPLETED_13
+
+Optimización de carga y entrega de imágenes configurables.
+
+Resultado verificado:
+
+- `ManagedImageService` procesa con GD las nuevas cargas JPG/JPEG/PNG/WEBP, valida la imagen real, corrige orientación EXIF JPEG, redimensiona proporcionalmente sin ampliar y usa nombres UUID.
+- WebP se genera cuando `imagewebp` está disponible; en este entorno GD y WebP están habilitados. Si WebP no está disponible se conserva salida JPEG/PNG compatible.
+- Límites de procesamiento: logos 800 px/calidad 85; fondo 1920 px/calidad 82; noticias y planos raster 1600 px/calidad 84; perfiles 600 px/calidad 84; QR hasta 2000 px conservando PNG y calidad alta.
+- Noticias y urbanizaciones generan thumbnails derivados bajo `thumbs/` (600 px); perfiles generan avatar de 240 px. No se añadieron columnas ni migraciones.
+- Cards, listados y avatares usan thumbnails; detalles, mapas y hero conservan la imagen principal. Imágenes no críticas incorporan `loading="lazy"` y `decoding="async"`.
+- Reemplazos eliminan principal y thumbnail anteriores únicamente después de guardar correctamente el nuevo archivo. Rutas inválidas o con traversal se rechazan.
+- QR continúa sin conversión agresiva y logos/fondos/configuración financiera reutilizan el mismo servicio. El PDF original de un plano permanece sin recomprimir.
+- Rutas históricas siguen resolviéndose y usan la imagen principal si no existe thumbnail; archivos ausentes muestran fallback y no generan `<img>` roto.
+- No se convirtieron ni eliminaron imágenes históricas, no se introdujeron colas ni dependencias y no se modificó Nginx automáticamente.
+- `docs/09-DEPLOYMENT.md` documenta cache inmutable de imágenes por 30 días y verificación de GD/WebP.
+
+Pruebas:
+
+```text
+tests dirigidos: 77 passed, 277 assertions
+tests de regresión de mapas: 40 passed, 232 assertions
+php artisan test: 550 passed, 2168 assertions
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Medición reproducible con fixture JPEG generado de 4032x3024:
+
+```text
+entrada: 4032x3024, 1,169,121 bytes
+principal WebP: 1600x1200, 18,920 bytes
+thumbnail WebP: 600x450, 3,566 bytes
+```
+
+Pendiente real: UAT y verificación de límites `client_max_body_size`, `upload_max_filesize` y `post_max_size` en producción. Una conversión masiva de históricos queda fuera de esta fase.
+
+## PREVIOUS_COMPLETED_12
 
 Módulo administrativo completo de Noticias y novedades.
 

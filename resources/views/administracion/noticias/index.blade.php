@@ -4,8 +4,8 @@
 <x-crm.page-header title="Noticias y novedades" subtitle="Publicaciones visibles en el portal público."><a class="btn" href="{{ route('admin.noticias.create') }}">+ Nueva noticia</a></x-crm.page-header>
 @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
 <div class="table-scroll"><table class="table"><thead><tr><th>Imagen</th><th>Título</th><th>Fecha</th><th>Estado</th><th>Destacada</th><th>Orden</th><th>Acciones</th></tr></thead><tbody>
-@forelse($noticias as $noticia)<tr>
-    <td>@if($noticia->imageUrl())<img class="news-admin-thumb" src="{{ $noticia->imageUrl() }}" alt="Miniatura de {{ $noticia->titulo }}" loading="lazy">@else<span class="news-admin-placeholder"><i class="fa-regular fa-image"></i></span>@endif</td>
+@forelse($noticias as $noticia)@php($thumbnailUrl = $noticia->thumbnailUrl())<tr>
+    <td>@if($thumbnailUrl)<img class="news-admin-thumb" src="{{ $thumbnailUrl }}" alt="Miniatura de {{ $noticia->titulo }}" loading="lazy" decoding="async">@else<span class="news-admin-placeholder"><i class="fa-regular fa-image"></i></span>@endif</td>
     <td><strong>{{ $noticia->titulo }}</strong><small>{{ $noticia->resumen }}</small></td>
     <td>{{ $noticia->fecha_publicacion?->format('d/m/Y H:i') ?? 'Sin fecha' }}</td>
     <td><span class="badge {{ $noticia->publicada ? 'activa' : 'pendiente' }}">{{ $noticia->publicada ? 'Publicada' : 'Borrador' }}</span></td>

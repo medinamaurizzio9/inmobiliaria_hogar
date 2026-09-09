@@ -28,4 +28,5 @@
         @endforelse
     </tbody></table>
 </div>
+{{ $cuotas->links() }}
 @endsection

@@ -730,6 +730,27 @@ sudo systemctl reload nginx
 
 Preferir `reload` sobre `restart` cuando sea suficiente.
 
+## Cache HTTP para imágenes públicas
+
+Las imágenes administradas se guardan con nombres únicos, por lo que pueden
+recibir cache inmutable de larga duración sin impedir que un reemplazo se vea
+inmediatamente. Configuración recomendada para producción:
+
+```nginx
+location ~* \.(jpg|jpeg|png|gif|webp|svg|ico)$ {
+    expires 30d;
+    add_header Cache-Control "public, immutable";
+    access_log off;
+}
+```
+
+Validar siempre con `sudo nginx -t` antes de recargar. Laravel no modifica la
+configuración de Nginx. Confirmar además que PHP tiene `gd` y soporte WebP:
+
+```bash
+php -r "var_dump(extension_loaded('gd'), function_exists('imagewebp'));"
+```
+
 ---
 
 # 33. HTTPS

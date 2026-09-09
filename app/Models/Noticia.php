@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ManagedImageService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -52,5 +53,18 @@ class Noticia extends Model
         return $this->imagen && Storage::disk('public')->exists($this->imagen)
             ? Storage::disk('public')->url($this->imagen)
             : null;
+    }
+
+    public function thumbnailUrl(): ?string
+    {
+        if (! $this->imagen) {
+            return null;
+        }
+
+        $thumbnail = app(ManagedImageService::class)->thumbnailPath($this->imagen);
+
+        return $thumbnail && Storage::disk('public')->exists($thumbnail)
+            ? Storage::disk('public')->url($thumbnail)
+            : $this->imageUrl();
     }
 }

@@ -112,6 +112,7 @@ class PlanoMapaTest extends TestCase
         $lote = Lote::firstOrFail();
         $lote->update(['coord_x' => null, 'coord_y' => null]);
         $urbanizacion = $lote->manzano->urbanizacion;
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
 
         $this->actingAs($admin)
@@ -130,6 +131,7 @@ class PlanoMapaTest extends TestCase
         $lote = Lote::firstOrFail();
         $lote->update(['coord_x' => 35.25, 'coord_y' => 61.75]);
         $urbanizacion = $lote->manzano->urbanizacion;
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
 
         $this->actingAs($admin)
@@ -186,6 +188,7 @@ class PlanoMapaTest extends TestCase
 
         $admin = User::where('email', 'admin@impacto.test')->firstOrFail();
         $urbanizacion = Urbanizacion::firstOrFail();
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
 
         $this->actingAs($admin)
@@ -202,6 +205,7 @@ class PlanoMapaTest extends TestCase
 
         $admin = User::where('email', 'admin@impacto.test')->firstOrFail();
         $urbanizacion = Urbanizacion::firstOrFail();
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
 
         $this->actingAs($admin)
@@ -225,6 +229,7 @@ class PlanoMapaTest extends TestCase
 
         $admin = User::where('email', 'admin@impacto.test')->firstOrFail();
         $urbanizacion = Urbanizacion::firstOrFail();
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
 
         $html = $this->actingAs($admin)
@@ -269,6 +274,7 @@ class PlanoMapaTest extends TestCase
         $lote = Lote::firstOrFail();
         $lote->update(['coord_x' => 40, 'coord_y' => 55]);
         $urbanizacion = $lote->manzano->urbanizacion;
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
 
         $this->get(route('disponibilidad.publica', ['urbanizacion_id' => $urbanizacion->id]))

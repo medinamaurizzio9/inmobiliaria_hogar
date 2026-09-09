@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-<div class="topbar"><h1 class="title">{{ $urbanizacion->exists ? 'Editar urbanizacion' : 'Nueva urbanizacion' }}</h1><a class="btn secondary" href="{{ route('urbanizaciones.index') }}">Volver</a></div>
+<div class="topbar"><h1 class="title">{{ $urbanizacion->exists ? 'Editar urbanizacion' : 'Nueva urbanizacion' }}</h1><div class="actions">@if($urbanizacion->exists)<a class="btn" href="{{ route('urbanizaciones.edit', $urbanizacion) }}">Datos generales</a><a class="btn secondary" href="{{ route('urbanizaciones.public-page.edit', $urbanizacion) }}">Página pública</a>@endif<a class="btn secondary" href="{{ route('urbanizaciones.index') }}">Volver</a></div></div>
 @if ($errors->any()) <div class="errors">{{ $errors->first() }}</div> @endif
 <form class="form card" method="POST" enctype="multipart/form-data" action="{{ $urbanizacion->exists ? route('urbanizaciones.update', $urbanizacion) : route('urbanizaciones.store') }}">
     @csrf @if($urbanizacion->exists) @method('PUT') @endif
@@ -13,12 +13,12 @@
     <div class="field full">
         <label>Plano de la urbanizacion</label>
         <input type="file" name="plano_imagen" accept="application/pdf,image/jpeg,image/png,image/webp">
-        <p class="muted">Para mejor calidad, suba el plano en PDF o imagen mínima de 3000 px de ancho.</p>
+        <p class="muted">Para mejor calidad, suba el plano en PDF o imagen de alta resolución. Los raster mayores de 2 MB se optimizan sin cambiar sus dimensiones.</p>
     </div>
-    @if($urbanizacion->plano_imagen)
+    @if($urbanizacion->imageUrl())
         <div class="field full">
             <label>Preview del plano cargado</label>
-            <img class="plan-preview" src="{{ asset('storage/'.$urbanizacion->plano_imagen) }}" alt="Plano de {{ $urbanizacion->nombre }}">
+            <img class="plan-preview" src="{{ $urbanizacion->imageUrl() }}" alt="Plano de {{ $urbanizacion->nombre }}" decoding="async">
             @if($urbanizacion->plano_archivo_original)
                 <p class="muted">PDF original guardado. El mapa usa la imagen convertida de alta resolución.</p>
             @endif

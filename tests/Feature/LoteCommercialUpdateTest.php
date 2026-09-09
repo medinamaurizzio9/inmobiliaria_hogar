@@ -9,6 +9,7 @@ use App\Models\Urbanizacion;
 use App\Models\User;
 use App\Services\LotPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LoteCommercialUpdateTest extends TestCase
@@ -16,7 +17,9 @@ class LoteCommercialUpdateTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Urbanizacion $urbanizacion;
+
     private Cliente $cliente;
 
     protected function setUp(): void
@@ -197,6 +200,7 @@ class LoteCommercialUpdateTest extends TestCase
 
     public function test_mapa_muestra_precio_real_recalculado(): void
     {
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $this->urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
         $lote = $this->loteDisponible();
         $lote->update(['coord_x' => 35, 'coord_y' => 40, 'precio' => 24000]);

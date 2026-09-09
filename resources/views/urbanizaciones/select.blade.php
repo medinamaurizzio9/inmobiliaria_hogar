@@ -12,8 +12,8 @@
 <div class="project-grid grid-urbanizaciones">
     @forelse($urbanizaciones as $urbanizacion)
         <article class="project-card">
-            @if($urbanizacion->plano_imagen)
-                <img src="{{ asset('storage/'.$urbanizacion->plano_imagen) }}" alt="Plano {{ $urbanizacion->nombre }}">
+            @if($urbanizacion->imageUrl(true))
+                <img src="{{ $urbanizacion->imageUrl(true) }}" alt="Plano {{ $urbanizacion->nombre }}" loading="lazy" decoding="async">
             @else
                 <div class="project-placeholder">Sin plano cargado</div>
             @endif

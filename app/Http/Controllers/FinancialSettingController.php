@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\SystemSetting;
 use App\Services\AuditService;
 use App\Services\FinancialSettingsService;
+use App\Services\ManagedImageService;
 use App\Support\UrbanizacionContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class FinancialSettingController extends Controller
@@ -23,12 +23,12 @@ class FinancialSettingController extends Controller
         ]);
     }
 
-    public function update(Request $request, FinancialSettingsService $settings, AuditService $auditService): RedirectResponse
+    public function update(Request $request, FinancialSettingsService $settings, AuditService $auditService, ManagedImageService $images): RedirectResponse
     {
         abort_unless($request->user()->hasAnyRole(['administrador', 'super administrador']), 403);
 
         $data = $request->validate([
-            'qr_institucional_imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            'qr_institucional_imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'qr_institucional_nombre' => ['nullable', 'string', 'max:255'],
             'qr_institucional_activo' => ['required', 'boolean'],
             'banco_nombre' => ['nullable', 'string', 'max:150'],
@@ -49,16 +49,12 @@ class FinancialSettingController extends Controller
 
         $before = $settings->all(UrbanizacionContext::currentId());
         if ($request->hasFile('qr_institucional_imagen')) {
-            $data['qr_institucional_imagen'] = $request->file('qr_institucional_imagen')->store('configuracion-financiera/qr', 'public');
+            $data['qr_institucional_imagen'] = $images->replaceOptimized($before['qr_institucional_imagen'], $request->file('qr_institucional_imagen'), 'configuracion-financiera/qr', ['max_width' => 2000, 'max_height' => 2000, 'quality' => 95, 'format' => 'original'])['path'];
         }
 
         $settings->update($data, UrbanizacionContext::currentId());
         $after = $settings->all(UrbanizacionContext::currentId());
         $auditService->log(SystemSetting::query()->first(), 'actualizar_configuracion_financiera', 'Configuracion financiera administrativa actualizada.', $before, $after, $request);
-
-        if (isset($data['qr_institucional_imagen']) && $before['qr_institucional_imagen'] !== '' && $before['qr_institucional_imagen'] !== $data['qr_institucional_imagen']) {
-            Storage::disk('public')->delete($before['qr_institucional_imagen']);
-        }
 
         return back()->with('status', 'Configuracion financiera guardada.');
     }

@@ -338,9 +338,9 @@ class UsuarioController extends Controller
     {
         $this->authorizeManageUsers($request);
         abort_if($usuario->hasRole('cliente'), 404);
-        $data = $request->validate(['foto' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']]);
+        $data = $request->validate(['foto' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240']]);
         $before = $usuario->foto;
-        $usuario->forceFill(['foto' => $images->replace($before, $data['foto'], 'usuarios')])->save();
+        $usuario->forceFill(['foto' => $images->replaceOptimized($before, $data['foto'], 'usuarios', ['max_width' => 600, 'max_height' => 600, 'quality' => 84, 'generate_thumbnail' => true, 'thumbnail_width' => 240, 'thumbnail_height' => 240])['path']])->save();
         $auditService->log($usuario, 'cambiar_foto_usuario', 'Fotografía del usuario actualizada.', ['foto' => $before], ['foto' => $usuario->foto], $request);
 
         return back()->with('status', 'Fotografía actualizada.');

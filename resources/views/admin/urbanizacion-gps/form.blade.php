@@ -22,7 +22,7 @@
         <select name="urbanizacion_id" id="gps-urbanizacion-select" required>
             <option value="">Seleccionar urbanizacion</option>
             @foreach($urbanizaciones as $urbanizacion)
-                <option value="{{ $urbanizacion->id }}" data-plano="{{ $urbanizacion->plano_imagen ? asset('storage/'.$urbanizacion->plano_imagen) : '' }}" @selected($selectedUrbanizacionId === $urbanizacion->id)>{{ $urbanizacion->nombre }}</option>
+                <option value="{{ $urbanizacion->id }}" data-plano="{{ $urbanizacion->imageUrl() ?? '' }}" @selected($selectedUrbanizacionId === $urbanizacion->id)>{{ $urbanizacion->nombre }}</option>
             @endforeach
         </select>
     </div>

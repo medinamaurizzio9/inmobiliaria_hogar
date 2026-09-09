@@ -32,7 +32,7 @@ class NoticiaController extends Controller
         $data['fecha_publicacion'] = $data['publicada'] ? ($data['fecha_publicacion'] ?? now()) : null;
         unset($data['estado']);
         if ($request->hasFile('imagen')) {
-            $data['imagen'] = $this->images->replace(null, $request->file('imagen'), 'noticias');
+            $data['imagen'] = $this->images->replaceOptimized(null, $request->file('imagen'), 'noticias', $this->imageOptions())['path'];
         }
         $noticia = Noticia::create($data);
         $this->audit->log($noticia, 'noticia_creada', 'Noticia creada.', null, $noticia->toArray(), $request);
@@ -54,7 +54,7 @@ class NoticiaController extends Controller
         $data['fecha_publicacion'] = $data['publicada'] ? ($data['fecha_publicacion'] ?? $noticia->fecha_publicacion ?? now()) : null;
         unset($data['estado']);
         if ($request->hasFile('imagen')) {
-            $data['imagen'] = $this->images->replace($noticia->imagen, $request->file('imagen'), 'noticias');
+            $data['imagen'] = $this->images->replaceOptimized($noticia->imagen, $request->file('imagen'), 'noticias', $this->imageOptions())['path'];
         }
         $noticia->update($data);
         $this->audit->log($noticia, 'noticia_actualizada', 'Noticia actualizada.', $before, $noticia->fresh()->toArray(), $request);
@@ -94,11 +94,16 @@ class NoticiaController extends Controller
             'titulo' => ['required', 'string', 'max:180'],
             'resumen' => ['required', 'string', 'max:500'],
             'contenido' => ['required', 'string', 'max:20000'],
-            'imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'estado' => ['required', 'in:borrador,publicada'],
             'destacada' => ['nullable', 'boolean'],
             'orden' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'fecha_publicacion' => ['nullable', 'date'],
         ]);
+    }
+
+    private function imageOptions(): array
+    {
+        return ['max_width' => 1600, 'max_height' => 1600, 'quality' => 84, 'generate_thumbnail' => true, 'thumbnail_width' => 600, 'thumbnail_height' => 600];
     }
 }

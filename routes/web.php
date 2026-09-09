@@ -27,6 +27,7 @@ use App\Http\Controllers\PublicDisponibilidadController;
 use App\Http\Controllers\PublicLeadController;
 use App\Http\Controllers\PublicPortalController;
 use App\Http\Controllers\PublicReceiptVerificationController;
+use App\Http\Controllers\PwaAssetController;
 use App\Http\Controllers\ReestructuracionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservaController;
@@ -34,6 +35,7 @@ use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\UrbanizacionAssignmentController;
 use App\Http\Controllers\UrbanizacionController;
+use App\Http\Controllers\UrbanizacionPublicPageController;
 use App\Http\Controllers\UrbanizacionSelectionController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VentaController;
@@ -43,6 +45,9 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 Route::get('/disponibilidad', PublicDisponibilidadController::class)->name('disponibilidad.publica');
+Route::get('/manifest.webmanifest', [PwaAssetController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/service-worker.js', [PwaAssetController::class, 'serviceWorker'])->name('pwa.service-worker');
+Route::get('/offline', [PwaAssetController::class, 'offline'])->name('pwa.offline');
 Route::get('/u/{slug}', [PublicDisponibilidadController::class, 'showBySlug'])->name('disponibilidad.urbanizacion');
 Route::get('/recibos/verificar/{numero}', PublicReceiptVerificationController::class)->name('recibos.verificar');
 Route::get('/noticias/{slug}', [PublicPortalController::class, 'noticia'])->name('public.noticias.show');
@@ -110,6 +115,8 @@ Route::middleware('auth')->group(function (): void {
             Route::delete('/mapa/lotes/{lote}/posicion', [MapaController::class, 'clearLotePosition'])->middleware('can:editar lotes')->name('mapa.lotes.posicion.clear');
 
             Route::resource('urbanizaciones', UrbanizacionController::class)->parameters(['urbanizaciones' => 'urbanizacion'])->except('show')->middlewareFor(['index'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear urbanizaciones')->middlewareFor(['edit', 'update'], 'can:editar urbanizaciones')->middlewareFor(['destroy'], 'can:eliminar urbanizaciones');
+            Route::get('/urbanizaciones/{urbanizacion}/pagina-publica', [UrbanizacionPublicPageController::class, 'edit'])->middleware('can:editar urbanizaciones')->name('urbanizaciones.public-page.edit');
+            Route::put('/urbanizaciones/{urbanizacion}/pagina-publica', [UrbanizacionPublicPageController::class, 'update'])->middleware('can:editar urbanizaciones')->name('urbanizaciones.public-page.update');
             Route::resource('manzanos', ManzanoController::class)->except('show')->middlewareFor(['index'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear manzanos')->middlewareFor(['edit', 'update'], 'can:editar manzanos')->middlewareFor(['destroy'], 'can:eliminar manzanos');
             Route::patch('/lotes/{lote}/comercial-rapido', [LoteCommercialUpdateController::class, 'updateQuick'])->middleware('can:ver lotes')->name('lotes.comercial-rapido');
             Route::post('/lotes/comercial-masivo', [LoteCommercialUpdateController::class, 'bulkUpdate'])->middleware('can:ver lotes')->name('lotes.comercial-masivo');

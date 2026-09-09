@@ -40,6 +40,11 @@ class DashboardController extends Controller
             : 0;
 
         $lotesPorEstado = $lotesQuery()->selectRaw('estado, count(*) as total')->groupBy('estado')->pluck('total', 'estado');
+        $totalLotes = (int) $lotesPorEstado->sum();
+        $ventasResumen = $ventasQuery()->whereIn('estado', ['activa', 'completada'])
+            ->selectRaw('count(*) as total, coalesce(sum(precio_final), 0) as monto')
+            ->first();
+        $reservasPorEstado = $reservasQuery()->selectRaw('estado, count(*) as total')->groupBy('estado')->pluck('total', 'estado');
         $ingresosPorMes = $cashQuery()->where('tipo', 'ingreso')
             ->where('estado', 'confirmado')
             ->whereDate('fecha', '>=', now()->subMonths(5)->startOfMonth())
@@ -66,20 +71,21 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', [
-            'totalLotes' => $lotesQuery()->count(),
-            'lotesDisponibles' => $lotesQuery()->where('estado', 'disponible')->count(),
-            'lotesVendidos' => $lotesQuery()->where('estado', 'vendido')->count(),
-            'lotesReservados' => $lotesQuery()->where('estado', 'reservado')->count(),
-            'lotesBloqueados' => $lotesQuery()->where('estado', 'bloqueado')->count(),
+            'totalLotes' => $totalLotes,
+            'lotesDisponibles' => (int) ($lotesPorEstado['disponible'] ?? 0),
+            'lotesVendidos' => (int) ($lotesPorEstado['vendido'] ?? 0),
+            'lotesReservados' => (int) ($lotesPorEstado['reservado'] ?? 0),
+            'lotesBloqueados' => (int) ($lotesPorEstado['bloqueado'] ?? 0),
             'ingresosDia' => $cashQuery()->where('tipo', 'ingreso')->where('estado', 'confirmado')->whereDate('fecha', today())->sum('monto'),
             'ingresosMes' => $cashQuery()->where('tipo', 'ingreso')->where('estado', 'confirmado')->whereBetween('fecha', [now()->startOfMonth(), now()->endOfMonth()])->sum('monto'),
             'clientes' => Cliente::count(),
-            'montoVendido' => $ventasQuery()->whereIn('estado', ['activa', 'completada'])->sum('precio_final'),
+            'montoVendido' => (float) ($ventasResumen?->monto ?? 0),
             'ventas' => $ventasQuery()->with('cliente', 'lote.manzano')->latest()->take(6)->get(),
             'cuotasVencidas' => $cuotasQuery()->whereIn('estado', ['pendiente', 'parcial', 'vencida'])->whereDate('fecha_programada', '<', now())->count(),
             'reservasVencidas' => $reservasQuery()->where('estado', 'activa')->whereDate('fecha_vencimiento', '<', now())->count(),
             'pendingPayments' => $pendingPayments,
             'operationsCenter' => $user->hasAnyRole(['super administrador', 'administrador', 'gerente', 'cajero']),
+            'advisorDashboard' => $user->hasRole('vendedor') && ! $user->hasAnyRole(['super administrador', 'administrador', 'gerente', 'cajero']),
             'lotesPorEstado' => $lotesPorEstado,
             'ingresosPorMes' => $ingresosPorMes,
             'cuotasVencidasLista' => $overdueInstallments,
@@ -91,11 +97,11 @@ class DashboardController extends Controller
                 ->take(6)
                 ->get(),
             'supervisorDashboard' => false,
-            'reservasActivasEquipo' => $reservasQuery()->where('estado', 'activa')->count(),
-            'reservasCanceladasEquipo' => $reservasQuery()->where('estado', 'cancelada')->count(),
-            'reservasConvertidasEquipo' => $reservasQuery()->where('estado', 'convertida')->count(),
-            'ventasCerradasEquipo' => $ventasQuery()->whereIn('estado', ['activa', 'completada'])->count(),
-            'montoVendidoEquipo' => $ventasQuery()->whereIn('estado', ['activa', 'completada'])->sum('precio_final'),
+            'reservasActivasEquipo' => (int) ($reservasPorEstado['activa'] ?? 0),
+            'reservasCanceladasEquipo' => (int) ($reservasPorEstado['cancelada'] ?? 0),
+            'reservasConvertidasEquipo' => (int) ($reservasPorEstado['convertida'] ?? 0),
+            'ventasCerradasEquipo' => (int) ($ventasResumen?->total ?? 0),
+            'montoVendidoEquipo' => (float) ($ventasResumen?->monto ?? 0),
             'rankingAsesoresEquipo' => collect(),
         ]);
     }
@@ -148,11 +154,16 @@ class DashboardController extends Controller
             'lotes as reservados_count' => fn ($query) => $query->where('estado', 'reservado'),
             'lotes as vendidos_count' => fn ($query) => $query->where('estado', 'vendido'),
         ]);
+        $ventasMesResumen = (clone $ventasBase)
+            ->whereIn('estado', ['activa', 'completada'])
+            ->whereBetween('fecha_venta', [now()->startOfMonth(), now()->endOfMonth()])
+            ->selectRaw('count(*) as total, coalesce(sum(precio_final), 0) as monto')
+            ->first();
 
         return view('dashboard-supervisor', [
             'asesoresActivos' => $asesores->where('activo', true)->count(),
-            'ventasMes' => (clone $ventasBase)->whereIn('estado', ['activa', 'completada'])->whereBetween('fecha_venta', [now()->startOfMonth(), now()->endOfMonth()])->count(),
-            'montoVendidoMes' => (clone $ventasBase)->whereIn('estado', ['activa', 'completada'])->whereBetween('fecha_venta', [now()->startOfMonth(), now()->endOfMonth()])->sum('precio_final'),
+            'ventasMes' => (int) ($ventasMesResumen?->total ?? 0),
+            'montoVendidoMes' => (float) ($ventasMesResumen?->monto ?? 0),
             'reservasActivas' => (clone $reservasBase)->where('estado', 'activa')->count(),
             'clientesAtendidos' => Cliente::query()->whereIn('created_by', $teamIds)->whereIn('urbanizacion_id', $urbanizacionIds)->count(),
             'reservasPorVencer' => (clone $reservasBase)->with('cliente', 'lote.manzano')->where('estado', 'activa')->whereBetween('fecha_vencimiento', [today(), today()->addDays(10)])->orderBy('fecha_vencimiento')->limit(6)->get(),

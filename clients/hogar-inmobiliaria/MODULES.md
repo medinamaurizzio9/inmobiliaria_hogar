@@ -80,6 +80,7 @@ Estados vigentes para esta implementación.
 - API
 - Alertas internas
 - Noticias y novedades
+- Página pública por urbanización (hero configurable, video YouTube, contenido descriptivo, disponibilidad y consulta WhatsApp)
 
 ## 3.2. Módulos en desarrollo (development)
 

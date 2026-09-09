@@ -4,11 +4,12 @@
         ? "Hola, soy {$cliente->nombre}. Quisiera reservar una visita para conocer la urbanización {$urbanizacion->nombre}. ¿Podrían brindarme información sobre horarios disponibles? Gracias."
         : "Hola, quisiera reservar una visita para conocer la urbanización {$urbanizacion->nombre}. ¿Podrían brindarme información sobre horarios disponibles? Gracias.";
     $whatsappUrl = \App\Support\WhatsAppLink::urlWithMessage($whatsappPhone, $message);
+    $thumbnailUrl = $urbanizacion->imageUrl(true);
 @endphp
 <article {{ $attributes->class(['client-project-card', 'urbanization-card', 'is-public' => $context === 'public']) }}>
     <div class="client-project-image">
-        @if($urbanizacion->plano_imagen)
-            <img class="technical-plan" src="{{ Storage::disk('public')->url(ltrim(preg_replace('#^storage/#', '', $urbanizacion->plano_imagen), '/')) }}" alt="Plano de {{ $urbanizacion->nombre }}" loading="lazy">
+        @if($thumbnailUrl)
+            <img class="technical-plan" src="{{ $thumbnailUrl }}" alt="Plano de {{ $urbanizacion->nombre }}" loading="lazy" decoding="async">
         @else
             <span><i class="fa-regular fa-map"></i></span>
         @endif

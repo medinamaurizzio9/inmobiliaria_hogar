@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Services\ManagedImageService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Urbanizacion extends Model
@@ -25,6 +28,22 @@ class Urbanizacion extends Model
         'estado',
         'mostrar_precio_publico',
     ];
+
+    public function imageUrl(bool $thumbnail = false): ?string
+    {
+        $path = ltrim(preg_replace('#^storage/#', '', (string) $this->plano_imagen), '/');
+        if ($path === '') {
+            return null;
+        }
+        if ($thumbnail) {
+            $candidate = app(ManagedImageService::class)->thumbnailPath($path);
+            if ($candidate && Storage::disk('public')->exists($candidate)) {
+                $path = $candidate;
+            }
+        }
+
+        return Storage::disk('public')->exists($path) ? Storage::disk('public')->url($path) : null;
+    }
 
     protected function casts(): array
     {
@@ -65,6 +84,16 @@ class Urbanizacion extends Model
     public function referencias(): HasMany
     {
         return $this->hasMany(UrbanizacionReferencia::class);
+    }
+
+    public function publicSetting(): HasOne
+    {
+        return $this->hasOne(UrbanizacionPublicSetting::class);
+    }
+
+    public function publicFeatures(): HasMany
+    {
+        return $this->hasMany(UrbanizacionPublicFeature::class)->orderBy('orden')->orderBy('id');
     }
 
     public function scopeWithLotStats(Builder $query): Builder

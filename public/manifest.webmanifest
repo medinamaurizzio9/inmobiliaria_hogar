@@ -1,0 +1,25 @@
+{
+    "name": "Hogar Inmobiliaria",
+    "short_name": "Hogar",
+    "description": "Portal y gestión comercial de Hogar Inmobiliaria",
+    "start_url": "/login",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f4f5ef",
+    "theme_color": "#879A32",
+    "lang": "es-BO",
+    "icons": [
+        {
+            "src": "/pwa/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}

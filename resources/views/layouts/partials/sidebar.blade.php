@@ -11,7 +11,7 @@
     $active = fn (array|string $patterns) => request()->routeIs(...(array) $patterns);
 @endphp
 
-<aside class="sidebar" id="crm-sidebar">
+<aside class="sidebar" id="crm-sidebar" tabindex="-1" aria-label="Navegación principal">
     <div class="sidebar-brand-row">
     <a class="brand" href="{{ $isCliente ? route('clientes.mi-cuenta') : '#' }}">
         @if(!empty($systemSettings['logo_main_url']))
@@ -19,7 +19,7 @@
         @endif
         {{ $systemSettings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}<span>{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</span>
     </a>
-    <button class="sidebar-collapse" type="button" data-sidebar-toggle aria-label="Contraer navegación"><i class="fa-solid fa-angles-left"></i></button>
+    <button class="sidebar-collapse" type="button" data-sidebar-toggle aria-controls="crm-sidebar" aria-label="Cerrar navegación"><i class="fa-solid fa-angles-left"></i></button>
     </div>
 
     @unless($isCliente)

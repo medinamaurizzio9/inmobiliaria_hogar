@@ -6,21 +6,35 @@ use App\Models\Lote;
 use App\Models\Manzano;
 use App\Models\Urbanizacion;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 
 class LotCsvImportService
 {
     private const HEADERS = ['urbanizacion', 'manzano', 'lote', 'superficie_m2', 'precio_m2', 'precio_total', 'cuota_inicial_tipo', 'cuota_inicial_valor', 'estado', 'coord_x', 'coord_y', 'observaciones'];
+
     private const LEGACY_HEADERS = ['urbanizacion', 'manzano', 'lote', 'superficie_m2', 'precio_m2', 'precio_total', 'estado', 'coord_x', 'coord_y', 'observaciones'];
+
     private const OLD_HEADERS = ['manzano_codigo', 'lote_codigo', 'superficie', 'precio', 'cuota_inicial_tipo', 'cuota_inicial_valor', 'estado', 'fila', 'columna', 'coord_x', 'coord_y', 'observaciones'];
 
     public function parse(UploadedFile|string $file): array
     {
         $path = $file instanceof UploadedFile ? $file->getRealPath() : $file;
-        $handle = fopen($path, 'r');
-        $firstLine = fgets($handle) ?: '';
+        $handle = is_string($path) ? @fopen($path, 'r') : false;
+
+        if ($handle === false) {
+            return ['rows' => [], 'errors' => ['No se pudo leer el archivo CSV.']];
+        }
+
+        $firstLine = fgets($handle);
+        if ($firstLine === false || trim(str_replace("\xEF\xBB\xBF", '', $firstLine)) === '') {
+            fclose($handle);
+
+            return ['rows' => [], 'errors' => ['El archivo CSV está vacío.']];
+        }
+
         $delimiter = $this->detectDelimiter($firstLine);
         $headers = str_getcsv($firstLine, $delimiter);
-        $headers = array_map(fn ($h) => $this->normalizeHeader($h), $headers);
+        $headers = array_map(fn ($header) => $this->normalizeHeader((string) $header), $headers);
         $rows = [];
         $errors = [];
         $seenRows = [];
@@ -35,7 +49,27 @@ class LotCsvImportService
 
         while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
             $line++;
-            $row = $this->normalizeRow(array_combine($activeHeaders, array_pad($data, count($activeHeaders), null)) ?: [], $headers);
+
+            if ($this->isEmptyLine($data)) {
+                continue;
+            }
+
+            $expectedColumns = count($activeHeaders);
+            $foundColumns = count($data);
+            if ($expectedColumns !== $foundColumns) {
+                $errors[] = "Línea {$line}: estructura CSV inválida. Se esperaban {$expectedColumns} columnas y se encontraron {$foundColumns}. Revise separadores, comas y campos vacíos.";
+
+                continue;
+            }
+
+            $combined = array_combine($activeHeaders, $data);
+            if ($combined === false) {
+                $errors[] = "Línea {$line}: no se pudo interpretar la estructura CSV.";
+
+                continue;
+            }
+
+            $row = $this->normalizeRow($combined, $headers);
             $rowErrors = $this->validateRow($row, $line, $seenRows);
 
             if ($rowErrors) {
@@ -47,41 +81,47 @@ class LotCsvImportService
 
         fclose($handle);
 
+        if ($rows === []) {
+            $errors[] = 'El archivo CSV no contiene filas de datos para importar.';
+        }
+
         return ['rows' => $rows, 'errors' => $errors];
     }
 
     public function import(array $rows): int
     {
-        $count = 0;
+        return DB::transaction(function () use ($rows): int {
+            $count = 0;
 
-        foreach ($rows as $row) {
-            $urbanizacion = Urbanizacion::firstOrCreate(
-                ['nombre' => trim($row['urbanizacion'])],
-                ['estado' => 'activa']
-            );
-            $manzano = Manzano::firstOrCreate(
-                ['urbanizacion_id' => $urbanizacion->id, 'codigo' => trim($row['manzano'])],
-                ['nombre' => 'Manzano '.trim($row['manzano']), 'orden' => 0]
-            );
+            foreach ($rows as $row) {
+                $urbanizacion = Urbanizacion::firstOrCreate(
+                    ['nombre' => trim($row['urbanizacion'])],
+                    ['estado' => 'activa']
+                );
+                $manzano = Manzano::firstOrCreate(
+                    ['urbanizacion_id' => $urbanizacion->id, 'codigo' => trim($row['manzano'])],
+                    ['nombre' => 'Manzano '.trim($row['manzano']), 'orden' => 0]
+                );
 
-            Lote::create([
-                'manzano_id' => $manzano->id,
-                'codigo' => trim($row['lote']),
-                'superficie' => (float) $row['superficie_m2'],
-                'precio' => (float) $row['precio_total'],
-                'cuota_inicial_tipo' => trim((string) ($row['cuota_inicial_tipo'] ?: 'monto')),
-                'cuota_inicial_valor' => (float) ($row['cuota_inicial_valor'] ?? 0),
-                'estado' => trim($row['estado']),
-                'fila' => (int) ($row['fila'] ?? 1),
-                'columna' => (int) ($row['columna'] ?? 1),
-                'coord_x' => (float) $row['coord_x'],
-                'coord_y' => (float) $row['coord_y'],
-                'observaciones' => $row['observaciones'],
-            ]);
-            $count++;
-        }
+                Lote::create([
+                    'manzano_id' => $manzano->id,
+                    'codigo' => trim($row['lote']),
+                    'superficie' => (float) $row['superficie_m2'],
+                    'precio' => (float) $row['precio_total'],
+                    'cuota_inicial_tipo' => trim((string) ($row['cuota_inicial_tipo'] ?: 'monto')),
+                    'cuota_inicial_valor' => (float) ($row['cuota_inicial_valor'] ?? 0),
+                    'estado' => trim($row['estado']),
+                    'fila' => (int) ($row['fila'] ?? 1),
+                    'columna' => (int) ($row['columna'] ?? 1),
+                    'coord_x' => (float) $row['coord_x'],
+                    'coord_y' => (float) $row['coord_y'],
+                    'observaciones' => $row['observaciones'],
+                ]);
+                $count++;
+            }
 
-        return $count;
+            return $count;
+        });
     }
 
     private function validateRow(array $row, int $line, array &$seenRows): array
@@ -150,6 +190,11 @@ class LotCsvImportService
     private function detectDelimiter(string $line): string
     {
         return substr_count($line, ';') > substr_count($line, ',') ? ';' : ',';
+    }
+
+    private function isEmptyLine(array $data): bool
+    {
+        return count($data) === 1 && trim((string) $data[0]) === '';
     }
 
     private function normalizeHeader(string $header): string

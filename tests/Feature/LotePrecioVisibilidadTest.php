@@ -7,6 +7,7 @@ use App\Models\Lote;
 use App\Models\Urbanizacion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LotePrecioVisibilidadTest extends TestCase
@@ -94,11 +95,19 @@ class LotePrecioVisibilidadTest extends TestCase
         $lote = Lote::whereHas('manzano', fn ($query) => $query->where('urbanizacion_id', $this->urbanizacion->id))
             ->where('estado', 'disponible')
             ->firstOrFail();
-        $lote->update(['precio' => 20000]);
+        Storage::fake('public');
+        Storage::disk('public')->put('planos/precio-publico.jpg', 'image');
+        $this->urbanizacion->update(['plano_imagen' => 'planos/precio-publico.jpg', 'mostrar_precio_publico' => true]);
+        $lote->update(['precio' => 20000, 'coord_x' => 10, 'coord_y' => 20]);
 
         $this->get(route('disponibilidad.publica', ['urbanizacion_id' => $this->urbanizacion->id]))
             ->assertOk()
             ->assertDontSee('Precio Oportunidad')
-            ->assertSee('$us 23,000.00');
+            ->assertSee('data-price="$us 23,000.00"', false)
+            ->assertDontSee('project-lot-list', false);
+
+        $this->urbanizacion->update(['mostrar_precio_publico' => false]);
+        $this->get(route('disponibilidad.publica', ['urbanizacion_id' => $this->urbanizacion->id]))
+            ->assertOk()->assertDontSee('data-price=', false)->assertDontSee('$us 23,000.00');
     }
 }

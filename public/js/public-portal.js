@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const menu = document.getElementById('portal-nav');
     const menuButton = document.querySelector('[data-portal-menu]');
     const dialog = document.querySelector('[data-login-dialog]');
+    const closeMenu = () => {
+        menu?.classList.remove('open');
+        menuButton?.setAttribute('aria-expanded', 'false');
+    };
     const setHeader = () => header?.classList.toggle('scrolled', window.scrollY > 24);
     setHeader();
     window.addEventListener('scroll', setHeader, { passive: true });
@@ -11,9 +15,15 @@ document.addEventListener('DOMContentLoaded', () => {
         menuButton.setAttribute('aria-expanded', String(Boolean(open)));
     });
     menu?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
-        menu.classList.remove('open');
-        menuButton?.setAttribute('aria-expanded', 'false');
+        closeMenu();
     }));
+    document.addEventListener('click', (event) => {
+        if (!menu?.classList.contains('open') || menu.contains(event.target) || menuButton?.contains(event.target)) return;
+        closeMenu();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeMenu();
+    });
     document.querySelector('[data-login-open]')?.addEventListener('click', () => dialog?.showModal());
     document.querySelector('[data-login-close]')?.addEventListener('click', () => dialog?.close());
     dialog?.addEventListener('click', event => {

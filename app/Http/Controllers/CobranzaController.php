@@ -47,6 +47,7 @@ class CobranzaController extends Controller
 
         $today = UrbanizacionContext::cashMovements(CashMovement::query(), UrbanizacionContext::currentId())->whereDate('fecha', today());
         $confirmed = (clone $today)->where('estado', 'confirmado')->where('tipo', 'ingreso');
+        $confirmedSummary = $confirmed->selectRaw("coalesce(sum(monto), 0) as total, coalesce(sum(case when metodo_pago = 'efectivo' then monto else 0 end), 0) as efectivo, coalesce(sum(case when metodo_pago = 'QR' then monto else 0 end), 0) as qr, coalesce(sum(case when metodo_pago = 'transferencia' then monto else 0 end), 0) as transferencia, count(*) as operaciones")->first();
         $pending = UrbanizacionContext::cashMovements(CashMovement::with('cliente', 'venta.lote.manzano.urbanizacion', 'cuota.venta.lote.manzano.urbanizacion', 'user'), UrbanizacionContext::currentId())->where('estado', 'pendiente_verificacion')->latest()->limit(50)->get();
         $resultId = (int) session('quick_payment_result', 0);
         $result = $resultId ? UrbanizacionContext::cashMovements(CashMovement::with('venta.lote.manzano.urbanizacion', 'pagoAplicaciones.cuota'), UrbanizacionContext::currentId())->find($resultId) : null;
@@ -54,9 +55,9 @@ class CobranzaController extends Controller
         $asesorIds = UrbanizacionContext::ventas(Venta::query(), UrbanizacionContext::currentId())->distinct()->pluck('user_id');
 
         return view('cobranza.index', ['ventas' => $ventas, 'search' => $search, 'filters' => $filters, 'asesores' => User::query()->whereIn('id', $asesorIds)->orderBy('name')->get(), 'pending' => $pending, 'result' => $result, 'instructions' => $settings->paymentInstructions(), 'summary' => [
-            'total' => (clone $confirmed)->sum('monto'), 'efectivo' => (clone $confirmed)->where('metodo_pago', 'efectivo')->sum('monto'),
-            'qr' => (clone $confirmed)->where('metodo_pago', 'QR')->sum('monto'), 'transferencia' => (clone $confirmed)->where('metodo_pago', 'transferencia')->sum('monto'),
-            'operaciones' => (clone $confirmed)->count(), 'pendientes' => $pending->count(),
+            'total' => (float) ($confirmedSummary?->total ?? 0), 'efectivo' => (float) ($confirmedSummary?->efectivo ?? 0),
+            'qr' => (float) ($confirmedSummary?->qr ?? 0), 'transferencia' => (float) ($confirmedSummary?->transferencia ?? 0),
+            'operaciones' => (int) ($confirmedSummary?->operaciones ?? 0), 'pendientes' => $pending->count(),
         ]]);
     }
 

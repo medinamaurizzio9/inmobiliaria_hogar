@@ -84,9 +84,9 @@ class CompradorUsuarioController extends Controller
     public function updatePhoto(Request $request, Cliente $cliente, ManagedImageService $images, AuditService $auditService): RedirectResponse
     {
         $this->authorizeAccess($request);
-        $data = $request->validate(['foto' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']]);
+        $data = $request->validate(['foto' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240']]);
         $before = $cliente->foto;
-        $cliente->update(['foto' => $images->replace($before, $data['foto'], 'clientes')]);
+        $cliente->update(['foto' => $images->replaceOptimized($before, $data['foto'], 'clientes', ['max_width' => 600, 'max_height' => 600, 'quality' => 84, 'generate_thumbnail' => true, 'thumbnail_width' => 240, 'thumbnail_height' => 240])['path']]);
         $auditService->log($cliente, 'cambiar_foto_comprador', 'Fotografía del comprador actualizada.', ['foto' => $before], ['foto' => $cliente->foto], $request);
 
         return back()->with('status', 'Fotografía actualizada.');

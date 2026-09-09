@@ -74,7 +74,7 @@
 </div>
 
 <div class="table-scroll">
-    <table class="table">
+    <table class="table responsive-table commercial-list">
         <thead>
             <tr>
                 <th><x-sort-link field="nombre">Nombre</x-sort-link></th>
@@ -89,13 +89,13 @@
         <tbody>
             @forelse ($clientes as $cliente)
                 <tr>
-                    <td>{{ $cliente->nombre }}</td>
-                    <td>{{ $cliente->documento }}</td>
-                    <td>@include('clientes.partials.whatsapp-link', ['cliente' => $cliente])</td>
-                    <td>{{ $cliente->email }}</td>
-                    <td>{{ $cliente->createdBy?->name ?? 'Sin asesor' }}</td>
-                    <td>{{ $cliente->ventas_count }}</td>
-                    <td class="actions">
+                    <td data-label="Nombre"><strong>{{ $cliente->nombre }}</strong></td>
+                    <td data-label="CI">{{ $cliente->documento }}</td>
+                    <td data-label="Teléfono">@include('clientes.partials.whatsapp-link', ['cliente' => $cliente])</td>
+                    <td data-label="Email">{{ $cliente->email }}</td>
+                    <td data-label="Asesor">{{ $cliente->createdBy?->name ?? 'Sin asesor' }}</td>
+                    <td data-label="Ventas">{{ $cliente->ventas_count }}</td>
+                    <td class="actions" data-label="Acciones">
                         <a class="btn secondary" href="{{ route('clientes.show', $cliente) }}">Ver</a>
                         @can('editar clientes')
                             <a class="btn secondary" href="{{ route('clientes.edit', $cliente) }}">Editar</a>
@@ -110,7 +110,7 @@
                     </td>
                 </tr>
             @empty
-                <tr>
+                <tr class="responsive-empty">
                     <td colspan="7" class="empty-table">No se encontraron clientes con los filtros aplicados.</td>
                 </tr>
             @endforelse

@@ -8,7 +8,10 @@
 @endphp
 <header class="crm-topbar">
     <div class="topbar-left">
-        <button class="icon-button sidebar-trigger" type="button" data-sidebar-toggle aria-label="Contraer o expandir navegación" aria-expanded="true"><i class="fa-solid fa-bars"></i></button>
+        <button class="icon-button sidebar-trigger" type="button" data-sidebar-toggle aria-controls="crm-sidebar" aria-label="Abrir navegación" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
+        <a class="mobile-topbar-brand" href="{{ $currentUser?->hasRole('cliente') ? route('clientes.mi-cuenta') : ($urbanizacionActual ? route('dashboard') : route('urbanizaciones.select')) }}" aria-label="Ir al inicio">
+            @if(!empty($systemSettings['logo_main_url']))<img src="{{ $systemSettings['logo_main_url'] }}" alt="">@else<span>H</span>@endif
+        </a>
         <form class="crm-search" action="{{ auth()->user()?->can('ver clientes') && $urbanizacionActual ? route('clientes.index') : '#' }}" method="GET" role="search">
             <i class="fa-solid fa-magnifying-glass"></i>
             <input name="q" type="search" placeholder="Buscar en el CRM..." aria-label="Buscar en el CRM">
@@ -27,6 +30,7 @@
             </button>
             <div class="user-dropdown" data-user-dropdown hidden>
                 @if(auth()->user()?->hasRole('cliente'))<a href="{{ route('clientes.mi-cuenta') }}"><i class="fa-solid fa-table-columns"></i> Mi cuenta</a><a href="{{ route('portal.perfil') }}"><i class="fa-regular fa-user"></i> Mi perfil</a>@endif
+                @unless(auth()->user()?->hasRole('cliente'))<a href="{{ route('password.change') }}"><i class="fa-regular fa-user"></i> Mi perfil y seguridad</a>@endunless
                 @if(auth()->user()?->hasAnyRole(['super administrador','administrador']))<a href="{{ route('admin.configuracion-general') }}"><i class="fa-solid fa-gear"></i> Configuración</a>@endif
                 <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit"><i class="fa-solid fa-arrow-right-from-bracket"></i> Cerrar sesión</button></form>
             </div>

@@ -9,6 +9,7 @@ use App\Models\Manzano;
 use App\Models\Urbanizacion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CommercialPricingTest extends TestCase
@@ -16,8 +17,11 @@ class CommercialPricingTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Urbanizacion $urbanizacion;
+
     private Manzano $manzano;
+
     private Cliente $cliente;
 
     protected function setUp(): void
@@ -27,6 +31,7 @@ class CommercialPricingTest extends TestCase
         $this->seed();
         $this->admin = User::where('email', 'admin@impacto.test')->firstOrFail();
         $this->urbanizacion = Urbanizacion::firstOrFail();
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $this->urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
         $this->manzano = $this->urbanizacion->manzanos()->firstOrFail();
         $this->cliente = Cliente::where('urbanizacion_id', $this->urbanizacion->id)->firstOrFail();

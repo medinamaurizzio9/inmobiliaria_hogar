@@ -27,4 +27,5 @@
         @endforelse
     </tbody></table>
 </div>
+{{ $movimientos->links() }}
 @endsection

@@ -17,22 +17,22 @@
 <div class="field"><label>&nbsp;</label><button type="submit" class="btn">Filtrar</button></div>
 <div class="field"><label>&nbsp;</label><a class="btn secondary" href="{{ route('reservas.index') }}">Limpiar</a></div>
 </form>
-<table class="table"><thead><tr><th><x-sort-link field="cliente">Cliente</x-sort-link></th><th>Documento</th><th><x-sort-link field="lote">Lote</x-sort-link></th><th>Tipo</th><th><x-sort-link field="fecha">Reserva</x-sort-link></th><th>Vence</th><th>Monto</th><th><x-sort-link field="estado">Estado</x-sort-link></th><th>Asesor</th><th></th></tr></thead><tbody>
+<div class="table-scroll"><table class="table responsive-table commercial-list"><thead><tr><th><x-sort-link field="cliente">Cliente</x-sort-link></th><th>Documento</th><th><x-sort-link field="lote">Lote</x-sort-link></th><th>Tipo</th><th><x-sort-link field="fecha">Reserva</x-sort-link></th><th>Vence</th><th>Monto</th><th><x-sort-link field="estado">Estado</x-sort-link></th><th>Asesor</th><th></th></tr></thead><tbody>
 @foreach($reservas as $reserva)
 <tr>
-<td>{{ $reserva->cliente->nombre }}</td>
-<td>{{ $reserva->cliente->documento }}</td>
-<td>{{ $reserva->lote->manzano->codigo }}-{{ $reserva->lote->codigo }}</td>
-<td>{{ $reserva->tipo_operacion }}</td>
-<td>{{ $reserva->fecha_reserva->format('d/m/Y') }}</td>
-<td>{{ $reserva->fecha_vencimiento->format('d/m/Y') }}</td>
-<td>{{ number_format($reserva->monto_reserva, 2) }}</td>
-<td><span class="badge {{ $reserva->estado }}">{{ $reserva->estado }}</span></td>
-<td>{{ $reserva->usuario?->name ?? 'Sin asesor' }}</td>
-<td class="actions"><a class="btn secondary" href="{{ route('clientes.show', $reserva->cliente) }}">Ver detalle</a>@can('ver recibo reserva')@if($reserva->cashMovements->contains(fn($movimiento) => $movimiento->concepto === 'reserva' && $movimiento->estado !== 'anulado'))<a class="btn secondary" href="{{ route('reservas.recibo', $reserva) }}" target="_blank" rel="noopener">Recibo PDF</a>@endif @endcan @can('editar reservas')<a class="btn secondary" href="{{ route('reservas.edit', $reserva) }}">Editar</a>@endcan @if($canDeleteReserva && auth()->user()->can('cancelar reservas'))<form method="POST" action="{{ route('reservas.expire', $reserva) }}" onsubmit="return confirm('Confirma marcar esta reserva como vencida?');">@csrf<button type="submit" class="btn secondary">Vencer</button></form><form method="POST" action="{{ route('reservas.destroy', $reserva) }}" onsubmit="const m = prompt('Motivo obligatorio de cancelacion'); if(!m) return false; this.motivo.value=m; return confirm('Confirma cancelar esta reserva y liberar el lote?');">@csrf @method('DELETE')<input type="hidden" name="motivo"><button type="submit" class="btn danger">Cancelar</button></form>@endif</td>
+<td data-label="Cliente"><strong>{{ $reserva->cliente->nombre }}</strong></td>
+<td data-label="Documento">{{ $reserva->cliente->documento }}</td>
+<td data-label="Lote">{{ $reserva->lote->manzano->codigo }}-{{ $reserva->lote->codigo }}</td>
+<td data-label="Tipo">{{ $reserva->tipo_operacion }}</td>
+<td data-label="Reserva">{{ $reserva->fecha_reserva->format('d/m/Y') }}</td>
+<td data-label="Vence">{{ $reserva->fecha_vencimiento->format('d/m/Y') }}</td>
+<td data-label="Monto">{{ number_format($reserva->monto_reserva, 2) }}</td>
+<td data-label="Estado"><span class="badge {{ $reserva->estado }}">{{ $reserva->estado }}</span></td>
+<td data-label="Asesor">{{ $reserva->usuario?->name ?? 'Sin asesor' }}</td>
+<td class="actions" data-label="Acciones"><a class="btn secondary" href="{{ route('clientes.show', $reserva->cliente) }}">Ver detalle</a>@can('ver recibo reserva')@if($reserva->cashMovements->contains(fn($movimiento) => $movimiento->concepto === 'reserva' && $movimiento->estado !== 'anulado'))<a class="btn secondary" href="{{ route('reservas.recibo', $reserva) }}" target="_blank" rel="noopener">Recibo PDF</a>@endif @endcan @can('editar reservas')<a class="btn secondary" href="{{ route('reservas.edit', $reserva) }}">Editar</a>@endcan @if($canDeleteReserva && auth()->user()->can('cancelar reservas'))<form method="POST" action="{{ route('reservas.expire', $reserva) }}" onsubmit="return confirm('Confirma marcar esta reserva como vencida?');">@csrf<button type="submit" class="btn secondary">Vencer</button></form><form method="POST" action="{{ route('reservas.destroy', $reserva) }}" onsubmit="const m = prompt('Motivo obligatorio de cancelacion'); if(!m) return false; this.motivo.value=m; return confirm('Confirma cancelar esta reserva y liberar el lote?');">@csrf @method('DELETE')<input type="hidden" name="motivo"><button type="submit" class="btn danger">Cancelar</button></form>@endif</td>
 </tr>
 @endforeach
-</tbody></table>
+</tbody></table></div>
 @if ($reservas->hasPages())
 <div class="pagination-wrapper">
     {{ $reservas->appends(request()->query())->links() }}

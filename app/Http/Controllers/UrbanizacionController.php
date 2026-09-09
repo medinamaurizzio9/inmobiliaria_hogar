@@ -21,14 +21,23 @@ class UrbanizacionController extends Controller
 
     public function create(): View
     {
-        return view('urbanizaciones.form', ['urbanizacion' => new Urbanizacion()]);
+        return view('urbanizaciones.form', ['urbanizacion' => new Urbanizacion]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        Urbanizacion::create($this->validated($request));
+        $data = $this->validated($request);
+        $storedPlan = $data['_stored_plan'] ?? null;
+        unset($data['_stored_plan']);
 
-        return redirect()->route('urbanizaciones.index')->with('status', 'Operacion realizada correctamente.');
+        try {
+            Urbanizacion::create($data);
+        } catch (\Throwable $exception) {
+            $this->deleteStoredPlan($storedPlan);
+            throw $exception;
+        }
+
+        return redirect()->route('urbanizaciones.index')->with('status', $this->successMessage($storedPlan));
     }
 
     public function edit(Urbanizacion $urbanizacion): View
@@ -38,9 +47,24 @@ class UrbanizacionController extends Controller
 
     public function update(Request $request, Urbanizacion $urbanizacion): RedirectResponse
     {
-        $urbanizacion->update($this->validated($request, $urbanizacion));
+        $oldImage = $urbanizacion->plano_imagen;
+        $oldOriginal = $urbanizacion->plano_archivo_original;
+        $data = $this->validated($request, $urbanizacion);
+        $storedPlan = $data['_stored_plan'] ?? null;
+        unset($data['_stored_plan']);
 
-        return redirect()->route('urbanizaciones.index')->with('status', 'Operacion realizada correctamente.');
+        try {
+            $urbanizacion->update($data);
+        } catch (\Throwable $exception) {
+            $this->deleteStoredPlan($storedPlan);
+            throw $exception;
+        }
+
+        if ($storedPlan && ($oldImage || $oldOriginal)) {
+            app(PlanImageService::class)->delete($oldImage, $oldOriginal);
+        }
+
+        return redirect()->route('urbanizaciones.index')->with('status', $this->successMessage($storedPlan));
     }
 
     public function destroy(Urbanizacion $urbanizacion): RedirectResponse
@@ -59,7 +83,7 @@ class UrbanizacionController extends Controller
             'propietario' => ['nullable', 'string', 'max:255'],
             'ubicacion' => ['nullable', 'string', 'max:255'],
             'descripcion' => ['nullable', 'string'],
-            'plano_imagen' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:51200'],
+            'plano_imagen' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:15360'],
             'superficie_total' => ['nullable', 'numeric', 'min:0'],
             'estado' => ['required', 'in:activa,pausada,cerrada'],
             'mostrar_precio_publico' => ['nullable', 'boolean'],
@@ -72,18 +96,15 @@ class UrbanizacionController extends Controller
 
             try {
                 $storedPlan = $planImageService->store($request->file('plano_imagen'));
-            } catch (\RuntimeException) {
+            } catch (\RuntimeException $exception) {
                 throw ValidationException::withMessages([
-                    'plano_imagen' => 'No se pudo convertir el PDF. Suba una imagen JPG o PNG en alta resolución.',
+                    'plano_imagen' => $exception->getMessage(),
                 ]);
-            }
-
-            if ($urbanizacion?->plano_imagen || $urbanizacion?->plano_archivo_original) {
-                $planImageService->delete($urbanizacion->plano_imagen, $urbanizacion->plano_archivo_original);
             }
 
             $data['plano_imagen'] = $storedPlan['plano_imagen'];
             $data['plano_archivo_original'] = $storedPlan['plano_archivo_original'];
+            $data['_stored_plan'] = $storedPlan;
         } else {
             unset($data['plano_imagen']);
             unset($data['plano_archivo_original']);
@@ -92,6 +113,27 @@ class UrbanizacionController extends Controller
         $data['slug'] = $this->uniqueSlug($data['nombre'], $urbanizacion);
 
         return $data;
+    }
+
+    private function deleteStoredPlan(?array $storedPlan): void
+    {
+        if ($storedPlan) {
+            app(PlanImageService::class)->delete($storedPlan['plano_imagen'] ?? null, $storedPlan['plano_archivo_original'] ?? null);
+        }
+    }
+
+    private function successMessage(?array $storedPlan): string
+    {
+        $optimization = $storedPlan['optimization'] ?? null;
+        if (! is_array($optimization) || $optimization['target_bytes_reached'] === null) {
+            return 'Operacion realizada correctamente.';
+        }
+
+        if ($optimization['target_bytes_reached']) {
+            return 'Operacion realizada correctamente. El plano fue optimizado automáticamente sin cambiar sus dimensiones.';
+        }
+
+        return 'Operacion realizada correctamente. El plano fue optimizado sin cambiar sus dimensiones, pero continúa superando 2 MB para conservar una calidad segura.';
     }
 
     private function uniqueSlug(string $name, ?Urbanizacion $urbanizacion = null): string

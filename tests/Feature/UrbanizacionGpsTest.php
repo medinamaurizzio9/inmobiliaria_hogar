@@ -6,6 +6,7 @@ use App\Models\Urbanizacion;
 use App\Models\UrbanizacionReferencia;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class UrbanizacionGpsTest extends TestCase
@@ -101,6 +102,7 @@ class UrbanizacionGpsTest extends TestCase
 
         $admin = User::where('email', 'admin@impacto.test')->firstOrFail();
         $urbanizacion = Urbanizacion::firstOrFail();
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
 
         UrbanizacionReferencia::create([

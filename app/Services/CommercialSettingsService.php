@@ -10,23 +10,43 @@ use Illuminate\Support\Carbon;
 
 class CommercialSettingsService
 {
+    /** @var array<int, array<string, mixed>> */
+    private array $resolvedSettings = [];
+
     public const RESERVA_DIAS_HABILES_ASESOR = 'reserva_dias_habiles_asesor';
+
     public const TIPO_CAMBIO_USD_BS = 'tipo_cambio_usd_bs';
+
     public const INCREMENTO_CREDITO_TIPO = 'incremento_credito_tipo';
+
     public const INCREMENTO_CREDITO_VALOR = 'incremento_credito_valor';
+
     public const MAX_CUOTAS_SEMICONTADO = 'max_cuotas_semicontado';
+
     public const MAX_CUOTAS_CREDITO = 'max_cuotas_credito';
+
     public const INICIAL_MINIMA_USD = 'inicial_minima_usd';
+
     public const PLAZO_12_HABILITADO = 'plazo_12_habilitado';
+
     public const PLAZO_24_HABILITADO = 'plazo_24_habilitado';
+
     public const PLAZO_36_HABILITADO = 'plazo_36_habilitado';
+
     public const DESCUENTO_CONTADO_ACTIVO = 'descuento_contado_activo';
+
     public const DESCUENTO_CONTADO_TIPO = 'descuento_contado_tipo';
+
     public const DESCUENTO_CONTADO_VALOR = 'descuento_contado_valor';
+
     public const DESCUENTO_PROMO_ACTIVO = 'descuento_promo_activo';
+
     public const DESCUENTO_PROMO_TIPO = 'descuento_promo_tipo';
+
     public const DESCUENTO_PROMO_VALOR = 'descuento_promo_valor';
+
     public const DESCUENTO_PROMO_NOMBRE = 'descuento_promo_nombre';
+
     public const DESCUENTO_PROMO_DESCRIPCION = 'descuento_promo_descripcion';
 
     public function reservaDiasHabilesAsesor(?int $urbanizacionId = null): int
@@ -38,6 +58,7 @@ class CommercialSettingsService
     {
         $setting = $this->settingModel($urbanizacionId);
         $setting->update(['reserva_dias_habiles_asesor' => max(1, $days)]);
+        $this->forgetResolvedSettings($setting->urbanizacion_id);
 
         return $setting;
     }
@@ -76,6 +97,7 @@ class CommercialSettingsService
             'max_cuotas_semicontado' => min(120, max(1, $semicontado)),
             'max_cuotas_credito' => min(120, max(1, $credito)),
         ]);
+        $this->forgetResolvedSettings($setting->urbanizacion_id);
 
         return $setting;
     }
@@ -104,6 +126,7 @@ class CommercialSettingsService
             'max_cuotas_semicontado' => max(1, (int) ($data[self::MAX_CUOTAS_SEMICONTADO] ?? $setting->max_cuotas_semicontado ?? 36)),
             'max_cuotas_credito' => max(1, (int) ($data[self::MAX_CUOTAS_CREDITO] ?? $setting->max_cuotas_credito ?? 36)),
         ]);
+        $this->forgetResolvedSettings($setting->urbanizacion_id);
 
         return $setting;
     }
@@ -131,6 +154,7 @@ class CommercialSettingsService
             'descuento_promo_nombre' => $data[self::DESCUENTO_PROMO_NOMBRE] ?? null,
             'descuento_promo_descripcion' => $data[self::DESCUENTO_PROMO_DESCRIPCION] ?? null,
         ]);
+        $this->forgetResolvedSettings($setting->urbanizacion_id);
 
         return $setting;
     }
@@ -200,14 +224,19 @@ class CommercialSettingsService
     public function settings(?int $urbanizacionId = null): array
     {
         $urbanizacionId ??= UrbanizacionContext::currentId();
+        $cacheKey = (int) ($urbanizacionId ?? 0);
+
+        if (array_key_exists($cacheKey, $this->resolvedSettings)) {
+            return $this->resolvedSettings[$cacheKey];
+        }
 
         if (! $urbanizacionId) {
-            return $this->globalDefaults();
+            return $this->resolvedSettings[$cacheKey] = $this->globalDefaults();
         }
 
         $setting = $this->settingModel($urbanizacionId);
 
-        return [
+        return $this->resolvedSettings[$cacheKey] = [
             'reserva_dias_habiles_asesor' => max(1, (int) $setting->reserva_dias_habiles_asesor),
             'tipo_cambio_usd_bs' => max(0, (float) $setting->tipo_cambio_usd_bs),
             'incremento_credito_tipo' => in_array($setting->incremento_credito_tipo, ['monto', 'porcentaje'], true) ? $setting->incremento_credito_tipo : 'monto',
@@ -232,12 +261,24 @@ class CommercialSettingsService
     public function settingModel(?int $urbanizacionId = null): UrbanizacionCommercialSetting
     {
         $urbanizacionId ??= UrbanizacionContext::currentId();
-        abort_unless($urbanizacionId && Urbanizacion::whereKey($urbanizacionId)->exists(), 404, 'Urbanizacion no encontrada.');
+        abort_unless($urbanizacionId, 404, 'Urbanizacion no encontrada.');
+
+        $setting = UrbanizacionCommercialSetting::where('urbanizacion_id', $urbanizacionId)->first();
+        if ($setting) {
+            return $setting;
+        }
+
+        abort_unless(Urbanizacion::whereKey($urbanizacionId)->exists(), 404, 'Urbanizacion no encontrada.');
 
         return UrbanizacionCommercialSetting::firstOrCreate(
             ['urbanizacion_id' => $urbanizacionId],
-            $this->globalDefaults()
+            $this->globalDefaults(),
         );
+    }
+
+    private function forgetResolvedSettings(int $urbanizacionId): void
+    {
+        unset($this->resolvedSettings[$urbanizacionId]);
     }
 
     private function globalDefaults(): array

@@ -9,6 +9,7 @@ use App\Models\Reserva;
 use App\Models\Urbanizacion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MapaLotePermisosTest extends TestCase
@@ -21,6 +22,7 @@ class MapaLotePermisosTest extends TestCase
 
         $vendedor = User::where('email', 'vendedor@impacto.test')->firstOrFail();
         $urbanizacion = $vendedor->urbanizacionesAsignadas()->firstOrFail();
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
         $lote = Lote::whereHas('manzano', fn ($query) => $query->where('urbanizacion_id', $urbanizacion->id))
             ->where('estado', 'disponible')
@@ -151,6 +153,7 @@ class MapaLotePermisosTest extends TestCase
 
         $admin = User::where('email', 'admin@impacto.test')->firstOrFail();
         $urbanizacion = Urbanizacion::firstOrFail();
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
         $lote = Lote::whereHas('manzano', fn ($query) => $query->where('urbanizacion_id', $urbanizacion->id))
             ->where('estado', 'disponible')
@@ -184,6 +187,7 @@ class MapaLotePermisosTest extends TestCase
 
         $admin = User::where('email', 'admin@impacto.test')->firstOrFail();
         $urbanizacion = Urbanizacion::firstOrFail();
+        Storage::disk('public')->put('planos/demo.jpg', 'fixture');
         $urbanizacion->update(['plano_imagen' => 'planos/demo.jpg']);
         $lote = Lote::whereHas('manzano', fn ($query) => $query->where('urbanizacion_id', $urbanizacion->id))
             ->where('estado', 'disponible')

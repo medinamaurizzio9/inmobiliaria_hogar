@@ -15,7 +15,7 @@
 <div class="topbar">
     <h1 class="title">Mapa de disponibilidad</h1>
     <div class="actions">
-        @if($urbanizacion?->plano_imagen)
+        @if($urbanizacion?->imageUrl())
             @role('administrador')
                 <button class="btn" id="toggle-edit" type="button">Activar ubicacion manual</button>
             @endrole
@@ -87,9 +87,9 @@
             @endif
         </div>
 
-        @if(! $urbanizacion->plano_imagen)
-            <div class="empty-plan">Esta urbanizacion aun no tiene plano cargado</div>
-        @else
+        @if(! $urbanizacion->imageUrl())
+            <div class="empty-plan">La imagen del plano no está disponible. Los datos de lotes se conservan.</div>
+        @endif
             @role('administrador')
                 <div class="edit-panel" id="edit-panel" hidden>
                     <div class="field">
@@ -146,7 +146,7 @@
 
                 <div class="plan-map-viewport" id="plan-map">
                     <div class="plan-map-layer" id="plan-map-layer">
-                        <img class="plan-map-image" id="plan-image" src="{{ asset('storage/'.$urbanizacion->plano_imagen) }}" alt="Plano {{ $urbanizacion->nombre }}">
+                        @if($urbanizacion->imageUrl())<img class="plan-map-image" id="plan-image" src="{{ $urbanizacion->imageUrl() }}" alt="Plano {{ $urbanizacion->nombre }}" decoding="async">@endif
                         @foreach($locatedLotes as $lote)
                             @php
                                 $manzano = $lote->manzano;
@@ -273,7 +273,6 @@
                     </div>
                 </div>
             </div>
-        @endif
     </div>
 @else
     <div class="card">Crea una urbanizacion para ver el mapa.</div>

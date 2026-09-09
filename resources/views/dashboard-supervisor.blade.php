@@ -14,9 +14,9 @@
 @endif
 
 <section class="crm-kpi-grid">
+    <x-crm.kpi-card label="Reservas activas" :value="$reservasActivas" icon="fa-calendar-check" hint="Del equipo" tone="warning" />
     <x-crm.kpi-card label="Asesores activos" :value="$asesoresActivos" icon="fa-user-group" hint="Equipo asignado" />
     <x-crm.kpi-card label="Ventas del mes" :value="$ventasMes" icon="fa-handshake" hint="Operaciones activas o completadas" />
-    <x-crm.kpi-card label="Reservas activas" :value="$reservasActivas" icon="fa-calendar-check" hint="Del equipo" tone="warning" />
     <x-crm.kpi-card label="Monto vendido este mes" :value="'Bs '.number_format($montoVendidoMes, 2)" icon="fa-chart-line" hint="{{ $clientesAtendidos }} clientes atendidos" />
 </section>
 
@@ -36,9 +36,9 @@
 
 <section class="card supervisor-team">
     <div class="card-heading"><div><span class="eyebrow">Mi equipo</span><h2>Actividad comercial del mes</h2></div><span class="card-total">{{ $equipo->count() }} asesores</span></div>
-    <div class="table-scroll"><table class="table"><thead><tr><th>Asesor</th><th>Grupo</th><th>Urbanizaciones</th><th>Ventas del mes</th><th>Reservas activas</th><th>Estado</th></tr></thead><tbody>
-        @forelse($equipo as $asesor)<tr><td><strong>{{ $asesor['nombre'] }}</strong></td><td>{{ $asesor['grupo'] }}</td><td>{{ $asesor['urbanizaciones'] ?: 'Sin asignación' }}</td><td>{{ $asesor['ventas'] }}<small>Bs {{ number_format($asesor['monto'], 2) }}</small></td><td>{{ $asesor['reservas'] }}</td><td><span class="badge {{ $asesor['activo'] ? 'activa' : 'cancelada' }}">{{ $asesor['activo'] ? 'Activo' : 'Inactivo' }}</span></td></tr>
-        @empty<tr><td colspan="6"><x-crm.empty-state title="No hay asesores asignados" icon="fa-user-group" /></td></tr>@endforelse
+    <div class="table-scroll"><table class="table responsive-table"><thead><tr><th>Asesor</th><th>Grupo</th><th>Urbanizaciones</th><th>Ventas del mes</th><th>Reservas activas</th><th>Estado</th></tr></thead><tbody>
+        @forelse($equipo as $asesor)<tr><td data-label="Asesor"><strong>{{ $asesor['nombre'] }}</strong></td><td data-label="Grupo">{{ $asesor['grupo'] }}</td><td data-label="Urbanizaciones">{{ $asesor['urbanizaciones'] ?: 'Sin asignación' }}</td><td data-label="Ventas">{{ $asesor['ventas'] }}<small>Bs {{ number_format($asesor['monto'], 2) }}</small></td><td data-label="Reservas">{{ $asesor['reservas'] }}</td><td data-label="Estado"><span class="badge {{ $asesor['activo'] ? 'activa' : 'cancelada' }}">{{ $asesor['activo'] ? 'Activo' : 'Inactivo' }}</span></td></tr>
+        @empty<tr class="responsive-empty"><td colspan="6"><x-crm.empty-state title="No hay asesores asignados" icon="fa-user-group" /></td></tr>@endforelse
     </tbody></table></div>
 </section>
 

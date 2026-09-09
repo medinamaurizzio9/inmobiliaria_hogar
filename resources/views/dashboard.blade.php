@@ -8,6 +8,16 @@
     @can('crear ventas')<a class="btn" href="{{ route('ventas.create') }}"><i class="fa-solid fa-plus"></i> Registrar venta</a>@endcan
 </x-crm.page-header>
 
+@if($advisorDashboard)
+<section class="advisor-mobile-priorities" aria-label="Acciones principales del asesor">
+    @can('crear reservas')<a class="btn" href="{{ route('reservas.create') }}"><i class="fa-solid fa-calendar-plus"></i> Nueva reserva</a>@endcan
+    @can('ver lotes')<a class="btn secondary" href="{{ route('mapa') }}"><i class="fa-solid fa-map-location-dot"></i> Ver lotes</a>@endcan
+    @can('ver clientes')<a class="btn secondary" href="{{ route('clientes.index') }}"><i class="fa-solid fa-users"></i> Clientes</a>@endcan
+    <a class="btn secondary" href="{{ route('password.change') }}"><i class="fa-regular fa-user"></i> Mi perfil</a>
+    <a class="btn secondary advisor-projects-link" href="{{ route('urbanizaciones.select') }}"><i class="fa-solid fa-building"></i> Urbanizaciones asignadas</a>
+</section>
+@endif
+
 @if($operationsCenter && $pendingPayments > 0 && auth()->user()->can('cobrar cuotas'))
 <section class="operations-alert" role="alert">
     <span class="operations-alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
@@ -32,11 +42,11 @@
 </section>
 @endif
 
-<section class="crm-kpi-grid">
-    <x-crm.kpi-card label="Clientes totales" :value="number_format($clientes)" icon="fa-users" hint="Base comercial activa" />
-    <x-crm.kpi-card label="Lotes disponibles" :value="number_format($lotesDisponibles)" icon="fa-map" hint="de {{ number_format($totalLotes) }} lotes" />
-    <x-crm.kpi-card label="Reservas activas" :value="number_format($reservasActivasEquipo)" icon="fa-calendar-check" hint="Seguimiento comercial" tone="warning" />
-    <x-crm.kpi-card :label="auth()->user()->hasRole('vendedor') ? 'Monto comercial' : 'Ventas acumuladas'" :value="'Bs '.number_format($montoVendido, 2)" icon="fa-chart-line" hint="Operaciones activas" />
+<section @class(['crm-kpi-grid', 'advisor-kpis' => $advisorDashboard])>
+    <x-crm.kpi-card class="advisor-priority-clients" label="Clientes totales" :value="number_format($clientes)" icon="fa-users" hint="Base comercial activa" />
+    <x-crm.kpi-card class="advisor-priority-lots" label="Lotes disponibles" :value="number_format($lotesDisponibles)" icon="fa-map" hint="de {{ number_format($totalLotes) }} lotes" />
+    <x-crm.kpi-card class="advisor-priority-reservations" label="Reservas activas" :value="number_format($reservasActivasEquipo)" icon="fa-calendar-check" hint="Seguimiento comercial" tone="warning" />
+    <x-crm.kpi-card class="advisor-priority-sales" :label="auth()->user()->hasRole('vendedor') ? 'Monto comercial' : 'Ventas acumuladas'" :value="'Bs '.number_format($montoVendido, 2)" icon="fa-chart-line" hint="Operaciones activas" />
 </section>
 
 @if($supervisorDashboard)
@@ -54,8 +64,8 @@
 </section>
 
 <section class="grid dashboard-grid crm-dashboard-panels">
-    <article class="card"><div class="card-heading"><div><span class="eyebrow">Cobranza</span><h2>Cuotas vencidas</h2></div><span class="status-count danger">{{ $cuotasVencidas }}</span></div><div class="table-scroll"><table class="table overdue-table"><thead><tr><th>Cliente</th>@if($canContactDebtors)<th>Celular</th>@endif<th>Lote</th><th>Vence</th><th>Saldo</th>@if($canContactDebtors)<th>Contacto</th>@endif</tr></thead><tbody>@forelse($cuotasVencidasLista as $cuota)<tr><td><strong>{{ $cuota->venta->cliente->nombre }}</strong></td>@if($canContactDebtors)<td>@if($cuota->whatsapp_url)<a class="phone-link" href="{{ $cuota->whatsapp_url }}" target="_blank" rel="noopener">{{ $cuota->venta->cliente->telefono }}</a>@else<span class="muted">Sin celular</span>@endif</td>@endif<td>{{ $cuota->venta->lote->manzano->codigo }}-{{ $cuota->venta->lote->codigo }}</td><td>{{ $cuota->fecha_programada->format('d/m/Y') }}</td><td>Bs {{ number_format($cuota->saldo_pendiente,2) }}</td>@if($canContactDebtors)<td>@if($cuota->whatsapp_url)<a class="btn whatsapp-button" href="{{ $cuota->whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></a>@else<span class="muted">No disponible</span>@endif</td>@endif</tr>@empty<tr><td colspan="{{ $canContactDebtors ? 6 : 4 }}"><x-crm.empty-state title="No existen cuotas vencidas" icon="fa-circle-check" /></td></tr>@endforelse</tbody></table></div></article>
-    <article class="card"><div class="card-heading"><div><span class="eyebrow">Actividad próxima</span><h2>Reservas por vencer</h2></div><span class="status-count">{{ $reservasVencidas }}</span></div><div class="table-scroll"><table class="table"><thead><tr><th>Cliente</th><th>Lote</th><th>Vence</th><th>Monto</th></tr></thead><tbody>@forelse($reservasPorVencer as $reserva)<tr><td><strong>{{ $reserva->cliente->nombre }}</strong></td><td>{{ $reserva->lote->manzano->codigo }}-{{ $reserva->lote->codigo }}</td><td>{{ $reserva->fecha_vencimiento->format('d/m/Y') }}</td><td>Bs {{ number_format($reserva->monto_reserva,2) }}</td></tr>@empty<tr><td colspan="4"><x-crm.empty-state title="Sin reservas próximas a vencer" icon="fa-calendar-check" /></td></tr>@endforelse</tbody></table></div></article>
+    <article class="card"><div class="card-heading"><div><span class="eyebrow">Cobranza</span><h2>Cuotas vencidas</h2></div><span class="status-count danger">{{ $cuotasVencidas }}</span></div><div class="table-scroll"><table class="table responsive-table overdue-table"><thead><tr><th>Cliente</th>@if($canContactDebtors)<th>Celular</th>@endif<th>Lote</th><th>Vence</th><th>Saldo</th>@if($canContactDebtors)<th>Contacto</th>@endif</tr></thead><tbody>@forelse($cuotasVencidasLista as $cuota)<tr><td data-label="Cliente"><strong>{{ $cuota->venta->cliente->nombre }}</strong></td>@if($canContactDebtors)<td data-label="Celular">@if($cuota->whatsapp_url)<a class="phone-link" href="{{ $cuota->whatsapp_url }}" target="_blank" rel="noopener">{{ $cuota->venta->cliente->telefono }}</a>@else<span class="muted">Sin celular</span>@endif</td>@endif<td data-label="Lote">{{ $cuota->venta->lote->manzano->codigo }}-{{ $cuota->venta->lote->codigo }}</td><td data-label="Vence">{{ $cuota->fecha_programada->format('d/m/Y') }}</td><td data-label="Saldo">Bs {{ number_format($cuota->saldo_pendiente,2) }}</td>@if($canContactDebtors)<td data-label="Contacto">@if($cuota->whatsapp_url)<a class="btn whatsapp-button" href="{{ $cuota->whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></a>@else<span class="muted">No disponible</span>@endif</td>@endif</tr>@empty<tr class="responsive-empty"><td colspan="{{ $canContactDebtors ? 6 : 4 }}"><x-crm.empty-state title="No existen cuotas vencidas" icon="fa-circle-check" /></td></tr>@endforelse</tbody></table></div></article>
+    <article class="card"><div class="card-heading"><div><span class="eyebrow">Actividad próxima</span><h2>Reservas por vencer</h2></div><span class="status-count">{{ $reservasVencidas }}</span></div><div class="table-scroll"><table class="table responsive-table"><thead><tr><th>Cliente</th><th>Lote</th><th>Vence</th><th>Monto</th></tr></thead><tbody>@forelse($reservasPorVencer as $reserva)<tr><td data-label="Cliente"><strong>{{ $reserva->cliente->nombre }}</strong></td><td data-label="Lote">{{ $reserva->lote->manzano->codigo }}-{{ $reserva->lote->codigo }}</td><td data-label="Vence">{{ $reserva->fecha_vencimiento->format('d/m/Y') }}</td><td data-label="Monto">Bs {{ number_format($reserva->monto_reserva,2) }}</td></tr>@empty<tr class="responsive-empty"><td colspan="4"><x-crm.empty-state title="Sin reservas próximas a vencer" icon="fa-calendar-check" /></td></tr>@endforelse</tbody></table></div></article>
 </section>
 
 @if($supervisorDashboard)<article class="card"><div class="card-heading"><div><span class="eyebrow">Equipo comercial</span><h2>Ranking de asesores</h2></div></div><div class="table-scroll"><table class="table"><thead><tr><th>Asesor</th><th>Reservas</th><th>Ventas</th><th>Monto vendido</th></tr></thead><tbody>@forelse($rankingAsesoresEquipo as $row)<tr><td>{{ $row['asesor'] }}</td><td>{{ $row['reservas'] }}</td><td>{{ $row['ventas'] }}</td><td>Bs {{ number_format($row['monto'],2) }}</td></tr>@empty<tr><td colspan="4">Aún no hay actividad del equipo.</td></tr>@endforelse</tbody></table></div></article>@endif

@@ -55,6 +55,9 @@ class ReportController extends Controller
     public function index(): View
     {
         $urbanizacionId = UrbanizacionContext::currentId();
+        $devoluciones = Devolucion::whereHas('venta.lote.manzano', fn (Builder $query) => $query->where('urbanizacion_id', $urbanizacionId))
+            ->selectRaw('coalesce(sum(monto_devuelto), 0) as devuelto, coalesce(sum(monto_retenido_empresa), 0) as retenido')
+            ->first();
 
         return view('reportes.index', [
             'lotesTotal' => UrbanizacionContext::lotes(Lote::query(), $urbanizacionId)->count(),
@@ -65,8 +68,8 @@ class ReportController extends Controller
                 ->where('estado', 'confirmado')
                 ->whereBetween('fecha', [now()->startOfMonth(), now()])
                 ->sum('monto'),
-            'montoDevuelto' => Devolucion::whereHas('venta.lote.manzano', fn (Builder $query) => $query->where('urbanizacion_id', $urbanizacionId))->sum('monto_devuelto'),
-            'montoRetenido' => Devolucion::whereHas('venta.lote.manzano', fn (Builder $query) => $query->where('urbanizacion_id', $urbanizacionId))->sum('monto_retenido_empresa'),
+            'montoDevuelto' => (float) ($devoluciones?->devuelto ?? 0),
+            'montoRetenido' => (float) ($devoluciones?->retenido ?? 0),
         ]);
     }
 
@@ -83,7 +86,7 @@ class ReportController extends Controller
             $query->where('estado', $request->query('estado'));
         }
 
-        $lotes = $query->orderBy('manzano_id')->orderBy('codigo')->get();
+        $lotes = $query->orderBy('manzano_id')->orderBy('codigo')->paginate(50)->withQueryString();
         $conteos = UrbanizacionContext::lotes(Lote::query(), $urbanizacionId)
             ->selectRaw('estado, count(*) as total')
             ->groupBy('estado')
@@ -99,9 +102,12 @@ class ReportController extends Controller
 
     public function reservas(Request $request, ReservationVisibilityService $visibility): View
     {
-        $reservas = $this->reservasReportQuery($request, $visibility)
+        $query = $this->reservasReportQuery($request, $visibility);
+        $metricas = $this->reservasMetricasQuery(clone $query);
+        $reservas = $query
             ->orderByDesc('fecha_reserva')
-            ->get();
+            ->paginate(50)
+            ->withQueryString();
 
         return view('reportes.reservas', [
             'reservas' => $reservas,
@@ -109,7 +115,7 @@ class ReportController extends Controller
             'grupos' => $this->gruposDisponibles($request),
             'supervisores' => User::role('supervisor')->orderBy('name')->get(),
             'tiposOperacion' => Reserva::TIPOS_OPERACION,
-            'metricas' => $this->reservasMetricas($reservas),
+            'metricas' => $metricas,
         ]);
     }
 
@@ -152,17 +158,18 @@ class ReportController extends Controller
             $query->whereHas('venta', fn (Builder $builder) => $builder->where('cliente_id', $request->integer('cliente_id')));
         }
 
-        $cuotas = $query->orderBy('fecha_vencimiento')->get();
+        $cuotas = $query->orderBy('fecha_vencimiento')->paginate(50)->withQueryString();
         $base = UrbanizacionContext::cuotas(Cuota::query(), $urbanizacionId);
+        $summary = $base->selectRaw("coalesce(sum(case when estado = 'pendiente' then 1 else 0 end), 0) as pendientes, coalesce(sum(case when estado = 'vencida' then 1 else 0 end), 0) as vencidas, coalesce(sum(case when estado = 'parcial' then 1 else 0 end), 0) as parciales, coalesce(sum(case when estado = 'pagada' then 1 else 0 end), 0) as pagadas, coalesce(sum(case when estado in ('pendiente', 'parcial', 'vencida') then saldo_pendiente else 0 end), 0) as saldo_pendiente")->first();
 
         return view('reportes.cuotas', [
             'cuotas' => $cuotas,
             'clientes' => $this->clientesDeUrbanizacion($urbanizacionId),
-            'pendientes' => (clone $base)->where('estado', 'pendiente')->count(),
-            'vencidas' => (clone $base)->where('estado', 'vencida')->count(),
-            'parciales' => (clone $base)->where('estado', 'parcial')->count(),
-            'pagadas' => (clone $base)->where('estado', 'pagada')->count(),
-            'saldoPendiente' => (clone $base)->whereIn('estado', ['pendiente', 'parcial', 'vencida'])->sum('saldo_pendiente'),
+            'pendientes' => (int) ($summary?->pendientes ?? 0),
+            'vencidas' => (int) ($summary?->vencidas ?? 0),
+            'parciales' => (int) ($summary?->parciales ?? 0),
+            'pagadas' => (int) ($summary?->pagadas ?? 0),
+            'saldoPendiente' => (float) ($summary?->saldo_pendiente ?? 0),
         ]);
     }
 
@@ -181,19 +188,26 @@ class ReportController extends Controller
             $query->where('concepto', $request->query('concepto'));
         }
 
-        $movimientos = $query->orderByDesc('fecha')->get();
+        $movimientos = $query->orderByDesc('fecha')->paginate(50)->withQueryString();
         $desde = $request->filled('desde') ? Carbon::parse($request->query('desde')) : now()->startOfMonth();
         $hasta = $request->filled('hasta') ? Carbon::parse($request->query('hasta')) : now();
         $base = UrbanizacionContext::cashMovements(CashMovement::query(), $urbanizacionId)->where('tipo', 'ingreso');
+        $summary = $base->selectRaw("coalesce(sum(case when estado = 'confirmado' and fecha = ? then monto else 0 end), 0) as ingresos_dia, coalesce(sum(case when estado = 'confirmado' and fecha between ? and ? then monto else 0 end), 0) as ingresos_rango, coalesce(sum(case when estado = 'anulado' and fecha between ? and ? then monto else 0 end), 0) as ingresos_anulados", [
+            now()->toDateString(),
+            $desde,
+            $hasta,
+            $desde,
+            $hasta,
+        ])->first();
 
         return view('reportes.ingresos', [
             'movimientos' => $movimientos,
             'metodos' => CashMovement::METODOS,
             'conceptos' => CashMovement::CONCEPTOS,
-            'ingresosDia' => (clone $base)->where('estado', 'confirmado')->whereDate('fecha', now()->toDateString())->sum('monto'),
-            'ingresosRango' => (clone $base)->where('estado', 'confirmado')->whereBetween('fecha', [$desde, $hasta])->sum('monto'),
-            'ingresosAnulados' => (clone $base)->where('estado', 'anulado')->whereBetween('fecha', [$desde, $hasta])->sum('monto'),
-            'totalNeto' => (clone $base)->where('estado', 'confirmado')->whereBetween('fecha', [$desde, $hasta])->sum('monto'),
+            'ingresosDia' => (float) ($summary?->ingresos_dia ?? 0),
+            'ingresosRango' => (float) ($summary?->ingresos_rango ?? 0),
+            'ingresosAnulados' => (float) ($summary?->ingresos_anulados ?? 0),
+            'totalNeto' => (float) ($summary?->ingresos_rango ?? 0),
         ]);
     }
 
@@ -349,6 +363,27 @@ class ReportController extends Controller
             'canceladas' => $reservas->where('estado', 'cancelada')->count(),
             'convertidas' => $reservas->where('estado', 'convertida')->count(),
             'porTipo' => collect(Reserva::TIPOS_OPERACION)->mapWithKeys(fn (string $tipo) => [$tipo => $reservas->where('tipo_operacion', $tipo)->count()]),
+        ];
+    }
+
+    private function reservasMetricasQuery(Builder $query): array
+    {
+        $porEstado = (clone $query)
+            ->selectRaw('estado, count(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+        $porTipo = (clone $query)
+            ->selectRaw('tipo_operacion, count(*) as total')
+            ->groupBy('tipo_operacion')
+            ->pluck('total', 'tipo_operacion');
+
+        return [
+            'total' => (int) $porEstado->sum(),
+            'activas' => (int) ($porEstado['activa'] ?? 0),
+            'vencidas' => (int) ($porEstado['vencida'] ?? 0),
+            'canceladas' => (int) ($porEstado['cancelada'] ?? 0),
+            'convertidas' => (int) ($porEstado['convertida'] ?? 0),
+            'porTipo' => collect(Reserva::TIPOS_OPERACION)->mapWithKeys(fn (string $tipo) => [$tipo => (int) ($porTipo[$tipo] ?? 0)]),
         ];
     }
 

@@ -9,23 +9,43 @@ use RuntimeException;
 
 class PlanImageService
 {
+    public const TARGET_BYTES = 2 * 1024 * 1024;
+
+    public function __construct(private readonly ManagedImageService $images) {}
+
     public function store(UploadedFile $file): array
     {
         if ($this->isPdf($file)) {
             return $this->storePdf($file);
         }
 
+        $isLarge = (int) $file->getSize() > self::TARGET_BYTES;
+        $result = $this->images->storeOptimized($file, 'planos', [
+            'max_width' => 1600,
+            'max_height' => 1600,
+            'preserve_dimensions' => $isLarge,
+            'quality' => $isLarge ? 88 : 84,
+            'quality_candidates' => $isLarge ? [88, 85, 82, 80, 78] : [84],
+            'target_bytes' => $isLarge ? self::TARGET_BYTES : null,
+            'generate_thumbnail' => true,
+            'thumbnail_width' => 600,
+            'thumbnail_height' => 600,
+        ]);
+
+        if (! Storage::disk('public')->exists($result['path'])) {
+            throw new RuntimeException('No se pudo verificar el plano procesado.');
+        }
+
         return [
-            'plano_imagen' => $file->store('planos', 'public'),
+            'plano_imagen' => $result['path'],
             'plano_archivo_original' => null,
+            'optimization' => $result,
         ];
     }
 
     public function delete(?string $imagePath, ?string $originalPath = null): void
     {
-        if ($imagePath) {
-            Storage::disk('public')->delete($imagePath);
-        }
+        $this->images->delete($imagePath, 'planos');
 
         if ($originalPath) {
             Storage::disk('public')->delete($originalPath);
@@ -60,7 +80,7 @@ class PlanImageService
         }
 
         try {
-            $image = new \Imagick();
+            $image = new \Imagick;
             $image->setResolution(300, 300);
             $image->readImage($pdfPath.'[0]');
             $image->setImageBackgroundColor('white');
