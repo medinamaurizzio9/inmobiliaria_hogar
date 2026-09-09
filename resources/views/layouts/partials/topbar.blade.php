@@ -10,7 +10,7 @@
     <div class="topbar-left">
         <button class="icon-button sidebar-trigger" type="button" data-sidebar-toggle aria-controls="crm-sidebar" aria-label="Abrir navegación" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
         <a class="mobile-topbar-brand" href="{{ $currentUser?->hasRole('cliente') ? route('clientes.mi-cuenta') : ($urbanizacionActual ? route('dashboard') : route('urbanizaciones.select')) }}" aria-label="Ir al inicio">
-            @if(!empty($systemSettings['logo_main_url']))<img src="{{ $systemSettings['logo_main_url'] }}" alt="">@else<span>H</span>@endif
+            <x-brand-logo variant="topbar" alt="" />
         </a>
         <form class="crm-search" action="{{ auth()->user()?->can('ver clientes') && $urbanizacionActual ? route('clientes.index') : '#' }}" method="GET" role="search">
             <i class="fa-solid fa-magnifying-glass"></i>

@@ -12,7 +12,7 @@
 <main class="project-public-page">
     <header class="public-header crm-public-header project-public-header">
         <a class="public-brand" href="{{ url('/') }}">
-            @if($systemSettings['logo_main_url'])<img src="{{ $systemSettings['logo_main_url'] }}" alt="{{ $systemSettings['system_name'] }}">@endif
+            <x-brand-logo variant="public-header" />
             <span><strong>{{ $systemSettings['system_name'] }}</strong><small>{{ $systemSettings['system_subtitle'] }}</small></span>
         </a>
         <nav><a href="#informacion">Información</a><a href="#disponibilidad">Disponibilidad</a><a href="#consulta">Contacto</a></nav>

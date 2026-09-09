@@ -14,10 +14,11 @@
 <aside class="sidebar" id="crm-sidebar" tabindex="-1" aria-label="Navegación principal">
     <div class="sidebar-brand-row">
     <a class="brand" href="{{ $isCliente ? route('clientes.mi-cuenta') : '#' }}">
-        @if(!empty($systemSettings['logo_main_url']))
-            <img src="{{ $systemSettings['logo_main_url'] }}" alt="Logo" style="max-width:72px;max-height:72px;display:block;margin-bottom:8px;">
-        @endif
-        {{ $systemSettings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}<span>{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</span>
+        <x-brand-logo variant="sidebar" />
+        <span class="sidebar-brand-copy">
+            <strong>{{ $systemSettings['system_name'] ?? 'IMPACTO URBANIZACIONES' }}</strong>
+            <small>{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</small>
+        </span>
     </a>
     <button class="sidebar-collapse" type="button" data-sidebar-toggle aria-controls="crm-sidebar" aria-label="Cerrar navegación"><i class="fa-solid fa-angles-left"></i></button>
     </div>

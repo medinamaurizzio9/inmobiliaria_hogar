@@ -16,6 +16,34 @@ despliegue y el smoke test hayan ocurrido realmente.
 
 ## LAST_COMPLETED
 
+Estandarización reusable y protección visual de logos del sistema.
+
+Resultado verificado:
+
+- Se creó el componente Blade `brand-logo` como fuente única de renderizado web para sidebar, topbar móvil, login, modal público, portal, página pública de urbanización/disponibilidad, verificación pública de recibos, footer y PWA offline.
+- El componente obtiene `logo_main` o `logo_login` mediante `SystemSettingsService`, conserva compatibilidad con la configuración actual y muestra iniciales accesibles cuando el archivo no existe.
+- Las variantes `sidebar`, `topbar`, `login`, `login-hero`, `public-header`, `footer` y `pwa` tienen límites propios de ancho/alto, `object-fit: contain`, `display: block` y protección contra contracción o expansión accidental.
+- Se eliminó el límite inline del sidebar y las reglas `!important` antiguas que competían por el tamaño del logo. Los selectores responsive ahora ocultan solo el nombre de marca, no el componente completo.
+- Logos horizontales, verticales, cuadrados, transparentes, WebP y de alta resolución comparten el mismo encuadre visual; las dimensiones originales del archivo no determinan su tamaño en pantalla.
+- Las plantillas PDF conservan su flujo especializado con rutas/data URI para DomPDF; la excepción y el procedimiento de reutilización están documentados en `docs/UI-BRAND-STANDARD.md`.
+- No se cambió el logo configurado, no se crearon migraciones y no se modificaron coordenadas, mapas, reservas, ventas, pagos ni lógica financiera.
+
+Pruebas:
+
+```text
+php artisan optimize:clear: passed
+php artisan test --filter=BrandLogoRegressionTest: 8 passed, 58 assertions
+tests dirigidos de branding/portal/urbanización/PWA: 31 passed, 216 assertions
+php artisan test: 592 passed, 2427 assertions
+npm.cmd run build: passed
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: UAT visual con los logos productivos en desktop, tablet y móvil antes del deploy. Mantener el cambio sin commit para incorporarlo al commit consolidado posterior.
+
+## PREVIOUS_COMPLETED_20
+
 Auditoría y optimización de rendimiento basada en mediciones locales.
 
 Resultado verificado:

@@ -10,9 +10,7 @@
 <main class="public-page receipt-verification-page">
     <section class="card receipt-verification-card">
         <header class="receipt-public-header">
-            @if(!empty($settings['logo_main_url']))
-                <img src="{{ $settings['logo_main_url'] }}" alt="Logo">
-            @endif
+            <x-brand-logo variant="public-header" :src="$settings['logo_main_url'] ?? null" :name="$settings['system_name'] ?? null" />
             <div>
                 <h1>{{ $settings['system_name'] ?? 'INMOLIDER CRM' }}</h1>
                 <p>{{ $settings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</p>

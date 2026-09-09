@@ -9,7 +9,7 @@
     >
         <div class="login-visual-overlay"></div>
         <div class="login-visual-content">
-            @if($logoUrl = ($systemSettings['logo_login_url'] ?: $systemSettings['logo_main_url']))<img class="login-hero-logo" src="{{ $logoUrl }}" alt="{{ $systemSettings['system_name'] }}">@endif
+            <x-brand-logo variant="login-hero" :prefer-login="true" />
             <span class="eyebrow">CRM inmobiliario</span>
             <h1>{{ $systemSettings['system_name'] ?? 'HOGAR INMOBILIARIA' }}</h1>
             <p>Gestiona urbanizaciones, clientes y oportunidades comerciales desde un solo lugar.</p>
@@ -19,7 +19,7 @@
         <form method="POST" action="{{ route('login.store') }}" class="login-card">
             @csrf
             <header class="login-heading">
-                @if($logoUrl = ($systemSettings['logo_login_url'] ?: $systemSettings['logo_main_url']))<img class="login-logo" src="{{ $logoUrl }}" alt="Logo">@endif
+                <x-brand-logo variant="login" :prefer-login="true" />
                 <span class="eyebrow">Acceso seguro</span>
                 <h2>Iniciar sesión</h2>
                 <p>{{ $systemSettings['system_subtitle'] ?? 'Sistema Integral de Terrenos' }}</p>
