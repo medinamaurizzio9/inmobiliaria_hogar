@@ -16,6 +16,11 @@
         <span class="muted">No cuenta sabados ni domingos.</span>
     </div>
     <div class="field">
+        <label for="proteccion_cliente_dias">Días de protección comercial del cliente</label>
+        <input id="proteccion_cliente_dias" type="number" min="1" max="365" name="proteccion_cliente_dias" value="{{ old('proteccion_cliente_dias', $proteccionClienteDias) }}" required>
+        <span class="muted">Se aplica al registrar una persona por primera vez. No se renueva automáticamente.</span>
+    </div>
+    <div class="field">
         <label>Tipo de cambio USD a Bs</label>
         <input type="number" min="0" step="0.01" name="tipo_cambio_usd_bs" value="{{ old('tipo_cambio_usd_bs', $priceSettings['tipo_cambio_usd_bs']) }}" required>
     </div>

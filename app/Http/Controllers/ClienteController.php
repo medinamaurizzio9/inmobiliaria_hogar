@@ -4,14 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreClienteRequest;
 use App\Models\Asesor;
+use App\Models\ClientCommercialEvent;
 use App\Models\Cliente;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\ClientCommercialEventService;
+use App\Services\ClientCommercialProtectionService;
+use App\Services\ClientMatchingService;
+use App\Services\ClientRegistrationService;
 use App\Services\DeletionDependencyService;
 use App\Support\UrbanizacionContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
 class ClienteController extends Controller
@@ -62,7 +67,7 @@ class ClienteController extends Controller
     public function create(Request $request): View
     {
         return view('clientes.form', [
-            'cliente' => new Cliente(),
+            'cliente' => new Cliente,
             'loteId' => $request->integer('lote_id') ?: null,
         ]);
     }
@@ -75,15 +80,24 @@ class ClienteController extends Controller
             return response()->json([]);
         }
 
-        $query = UrbanizacionContext::clientes(Cliente::query());
-        $this->applyVisibility($query, $request->user());
+        $normalizedDocument = app(ClientMatchingService::class)->normalizeDocument($q);
+        $query = Cliente::query();
+        $visibleIds = $this->visibleCreatorIds($request->user());
 
         $clientes = $query
-            ->where(function ($query) use ($q): void {
-                $query->where('nombre', 'like', "%{$q}%")
-                    ->orWhere('documento', 'like', "%{$q}%")
-                    ->orWhere('telefono', 'like', "%{$q}%")
-                    ->orWhere('email', 'like', "%{$q}%");
+            ->where(function ($query) use ($q, $normalizedDocument, $visibleIds): void {
+                $query->where(function ($visible) use ($q, $visibleIds): void {
+                    UrbanizacionContext::clientes($visible);
+                    if ($visibleIds !== null) {
+                        $visible->whereIn('created_by', $visibleIds);
+                    }
+                    $visible->where(function ($fields) use ($q): void {
+                        $fields->where('nombre', 'like', "%{$q}%")
+                            ->orWhere('documento', 'like', "%{$q}%")
+                            ->orWhere('telefono', 'like', "%{$q}%")
+                            ->orWhere('email', 'like', "%{$q}%");
+                    });
+                })->when($normalizedDocument !== null, fn ($nested) => $nested->orWhere('documento_normalizado', $normalizedDocument));
             })
             ->orderBy('nombre')
             ->limit(10)
@@ -92,48 +106,88 @@ class ClienteController extends Controller
         return response()->json($clientes);
     }
 
-    public function store(StoreClienteRequest $request, AuditService $auditService): RedirectResponse
+    public function matches(Request $request, ClientMatchingService $matching): JsonResponse
     {
+        $data = $request->validate([
+            'documento' => ['nullable', 'string', 'max:80'],
+            'telefono' => ['nullable', 'string', 'max:80'],
+            'email' => ['nullable', 'email', 'max:255'],
+        ]);
+        $exact = $matching->findExactClient($data['documento'] ?? null);
+        $potential = $exact ? collect() : $matching->findPotentialMatches($data);
+
+        return response()->json([
+            'exact' => $exact ? $matching->summary($exact, $request->user()) : null,
+            'potential' => $potential->map(fn (Cliente $cliente): array => $matching->summary($cliente, $request->user()))->values(),
+        ]);
+    }
+
+    public function store(
+        StoreClienteRequest $request,
+        AuditService $auditService,
+        ClientMatchingService $matching,
+        ClientRegistrationService $registration,
+        ClientCommercialEventService $events,
+    ): RedirectResponse {
         $urbanizacionId = UrbanizacionContext::currentId();
         $data = $request->validated();
         $loteId = $request->integer('lote_id') ?: null;
         unset($data['lote_id']);
-        $documento = trim((string) ($data['documento'] ?? ''));
+        unset($data['confirm_potential_match']);
 
-        if ($documento !== '') {
-            $duplicate = Cliente::with('createdBy')
-                ->where('urbanizacion_id', $urbanizacionId)
-                ->where('documento', $documento)
-                ->first();
+        if ($duplicate = $matching->findExactClient($data['documento'] ?? null)) {
+            $events->registerCommercialEvent($duplicate, ClientCommercialEvent::DUPLICATE_DOCUMENT, $request->user(), $urbanizacionId, 'document');
 
-            if ($duplicate) {
-                return back()
-                    ->withInput()
-                    ->with('duplicate_cliente_id', $duplicate->id)
-                    ->with('duplicate_cliente_message', 'Cliente ya registrado. No es necesario volver a registrarlo.')
-                    ->with('duplicate_cliente_data', $this->duplicateData($duplicate))
-                    ->with('duplicate_lote_id', $loteId);
-            }
+            return $this->duplicateResponse($request, $matching, $duplicate, $loteId);
         }
 
-        $cliente = Cliente::create([
-            ...$data,
-            'urbanizacion_id' => $urbanizacionId,
-            'created_by' => $request->user()->id,
-        ]);
+        $potentialMatches = $matching->findPotentialMatches($data);
+        if ($potentialMatches->isNotEmpty() && ! $request->boolean('confirm_potential_match')) {
+            foreach ($potentialMatches as $potential) {
+                foreach ($potential->getAttribute('commercial_match_types') as $type) {
+                    $events->registerCommercialEvent(
+                        $potential,
+                        $type === 'phone' ? ClientCommercialEvent::PHONE_MATCH : ClientCommercialEvent::EMAIL_MATCH,
+                        $request->user(),
+                        $urbanizacionId,
+                        $type,
+                    );
+                }
+            }
+
+            return back()->withInput()->with('potential_client_matches', $potentialMatches
+                ->map(fn (Cliente $cliente): array => $matching->summary($cliente, $request->user()))
+                ->values()
+                ->all());
+        }
+
+        $result = $registration->register($data, $request->user(), $urbanizacionId);
+        if (! $result['created']) {
+            $events->registerCommercialEvent($result['client'], ClientCommercialEvent::DUPLICATE_DOCUMENT, $request->user(), $urbanizacionId, 'document', ['race_prevented' => true]);
+
+            return $this->duplicateResponse($request, $matching, $result['client'], $loteId);
+        }
+
+        $cliente = $result['client'];
         $auditService->log($cliente, 'crear_cliente', 'Cliente creado.', null, $cliente->toArray(), $request);
 
         return redirect()->route('clientes.index')->with('status', 'Cliente creado.');
     }
 
-    public function show(Cliente $cliente): View
+    public function show(Cliente $cliente, ClientCommercialProtectionService $protection, ClientMatchingService $matching): View
     {
         abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
         abort_unless($this->canSeeCliente($cliente, request()->user()), 403, 'No tienes acceso a este cliente.');
 
-        $cliente->load('createdBy', 'urbanizacion', 'ventas.lote.manzano', 'ventas.cuotas', 'reservas.lote.manzano');
+        $cliente->load('createdBy', 'responsibleAdvisor', 'urbanizacion', 'ventas.lote.manzano.urbanizacion', 'ventas.cuotas', 'reservas.lote.manzano.urbanizacion');
+        $cliente->loadCount('commercialEvents');
 
-        return view('clientes.show', compact('cliente'));
+        return view('clientes.show', [
+            'cliente' => $cliente,
+            'commercialProtection' => $protection->getCommercialProtection($cliente),
+            'commercialSummary' => $matching->summary($cliente, request()->user()),
+            'canSeeFinancial' => request()->user()->can('ver ventas') || request()->user()->can('cobrar cuotas'),
+        ]);
     }
 
     public function edit(Cliente $cliente): View
@@ -144,19 +198,28 @@ class ClienteController extends Controller
         return view('clientes.form', compact('cliente'));
     }
 
-    public function update(StoreClienteRequest $request, Cliente $cliente, AuditService $auditService): RedirectResponse
+    public function update(StoreClienteRequest $request, Cliente $cliente, AuditService $auditService, ClientMatchingService $matching): RedirectResponse
     {
         abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
         abort_unless($this->canSeeCliente($cliente, $request->user()), 403, 'No tienes acceso a este cliente.');
 
+        $data = $request->validated();
+        if ($matching->findExactClient($data['documento'] ?? null, $cliente->id)) {
+            return back()->withInput()->withErrors(['documento' => 'Este CI pertenece a otra persona registrada.']);
+        }
         $before = $cliente->toArray();
-        $cliente->update($request->validated());
+        $cliente->update([
+            ...$data,
+            'documento_normalizado' => $matching->normalizeDocument($data['documento'] ?? null),
+            'telefono_normalizado' => $matching->normalizePhone($data['telefono'] ?? null),
+            'email_normalizado' => $matching->normalizeEmail($data['email'] ?? null),
+        ]);
         $auditService->log($cliente, 'editar_cliente', 'Cliente actualizado.', $before, $cliente->fresh()->toArray(), $request);
 
         return redirect()->route('clientes.index')->with('status', 'Cliente actualizado.');
     }
 
-    public function destroy(\Illuminate\Http\Request $request, Cliente $cliente, AuditService $auditService, DeletionDependencyService $dependencyService): RedirectResponse
+    public function destroy(Request $request, Cliente $cliente, AuditService $auditService, DeletionDependencyService $dependencyService): RedirectResponse
     {
         abort_unless($request->user()->hasAnyRole(['administrador', 'gerente']), 403, 'No tienes permiso para eliminar clientes.');
         abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
@@ -176,15 +239,14 @@ class ClienteController extends Controller
         return back()->with('status', 'Cliente eliminado.');
     }
 
-    private function duplicateData(Cliente $cliente): array
+    private function duplicateResponse(Request $request, ClientMatchingService $matching, Cliente $duplicate, ?int $loteId): RedirectResponse
     {
-        return [
-            'id' => $cliente->id,
-            'nombre' => $cliente->nombre,
-            'documento' => $cliente->documento,
-            'created_by' => $cliente->createdBy?->name ?? 'Usuario no registrado',
-            'created_at' => $cliente->created_at?->format('d/m/Y H:i') ?? '',
-        ];
+        return back()
+            ->withInput()
+            ->with('duplicate_cliente_id', $duplicate->id)
+            ->with('duplicate_cliente_message', 'Esta persona ya está registrada y no será duplicada. Puede reutilizarla en una nueva reserva o venta.')
+            ->with('duplicate_cliente_data', $matching->summary($duplicate, $request->user()))
+            ->with('duplicate_lote_id', $loteId);
     }
 
     private function perPage(Request $request): int
@@ -216,7 +278,7 @@ class ClienteController extends Controller
             return array_values(array_unique($ids));
         }
 
-        if ($user->hasAnyRole(['asesor', 'vendedor'])) {
+        if ($user->hasRole('vendedor')) {
             return [$user->id];
         }
 
@@ -227,7 +289,11 @@ class ClienteController extends Controller
     {
         $ids = $this->visibleCreatorIds($user);
 
-        return $ids === null || in_array((int) $cliente->created_by, $ids, true);
+        return $ids === null
+            || in_array((int) $cliente->created_by, $ids, true)
+            || in_array((int) $cliente->responsible_user_id, $ids, true)
+            || $cliente->ventas()->whereIn('user_id', $ids)->exists()
+            || $cliente->reservas()->whereIn('usuario_id', $ids)->exists();
     }
 
     private function canFilterAsesor(User $user): bool
@@ -241,7 +307,7 @@ class ClienteController extends Controller
             return collect();
         }
 
-        return User::whereHas('roles', fn ($query) => $query->whereIn('name', ['vendedor', 'asesor', 'supervisor']))
+        return User::whereHas('roles', fn ($query) => $query->whereIn('name', ['vendedor', 'supervisor']))
             ->orderBy('name')
             ->get();
     }

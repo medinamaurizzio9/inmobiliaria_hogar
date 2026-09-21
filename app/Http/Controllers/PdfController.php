@@ -49,6 +49,7 @@ class PdfController extends Controller
     public function clientProfile(Request $request, Cliente $cliente, SystemSettingsService $settings)
     {
         $this->authorizeClientPdf($request, $cliente);
+        $this->authorizeClientFinancialPdf($request, $cliente);
         $cliente->load([
             'urbanizacion',
             'createdBy',
@@ -69,6 +70,7 @@ class PdfController extends Controller
     public function clientAccountStatement(Request $request, Cliente $cliente, SystemSettingsService $settings)
     {
         $this->authorizeClientPdf($request, $cliente);
+        $this->authorizeClientFinancialPdf($request, $cliente);
         $cliente->load([
             'urbanizacion',
             'ventas.lote.manzano',
@@ -204,6 +206,19 @@ class PdfController extends Controller
         }
 
         abort_unless($user->hasAnyRole(['administrador', 'gerente']) || $user->can('ver clientes'), 403);
+    }
+
+    private function authorizeClientFinancialPdf(Request $request, Cliente $cliente): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            ($user->hasRole('cliente') && (int) $user->cliente_id === (int) $cliente->id)
+            || $user->can('ver ventas')
+            || $user->can('cobrar cuotas'),
+            403,
+            'No tienes acceso a la información financiera de este cliente.'
+        );
     }
 
     private function clientSummary(Cliente $cliente): array

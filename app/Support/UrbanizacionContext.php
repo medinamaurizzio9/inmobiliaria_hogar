@@ -111,7 +111,11 @@ class UrbanizacionContext
     {
         $id = $urbanizacionId ?? self::currentId();
 
-        return $query->where('urbanizacion_id', $id);
+        return $query->where(function (Builder $builder) use ($id): void {
+            $builder->where('urbanizacion_id', $id)
+                ->orWhereHas('ventas.lote.manzano', fn (Builder $nested) => $nested->where('urbanizacion_id', $id))
+                ->orWhereHas('reservas.lote.manzano', fn (Builder $nested) => $nested->where('urbanizacion_id', $id));
+        });
     }
 
     public static function loteBelongsToCurrent(Lote $lote): bool
@@ -121,7 +125,11 @@ class UrbanizacionContext
 
     public static function clienteBelongsToCurrent(Cliente $cliente): bool
     {
-        return (int) $cliente->urbanizacion_id === self::currentId();
+        $id = self::currentId();
+
+        return (int) $cliente->urbanizacion_id === $id
+            || $cliente->ventas()->whereHas('lote.manzano', fn (Builder $query) => $query->where('urbanizacion_id', $id))->exists()
+            || $cliente->reservas()->whereHas('lote.manzano', fn (Builder $query) => $query->where('urbanizacion_id', $id))->exists();
     }
 
     public static function ventaBelongsToCurrent(Venta $venta): bool

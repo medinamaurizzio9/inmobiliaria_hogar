@@ -76,7 +76,6 @@ class VentaController extends Controller
         $venta = new Venta(['fecha_venta' => now(), 'numero_cuotas' => 12, 'estado' => 'activa', 'tipo_operacion' => 'credito']);
         if ($request->filled('cliente_id')) {
             $cliente = Cliente::findOrFail($request->integer('cliente_id'));
-            abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
             $venta->cliente_id = $cliente->id;
         }
         if ($request->filled('lote_id')) {
@@ -93,7 +92,6 @@ class VentaController extends Controller
         $lote = Lote::with('manzano')->findOrFail($request->validated('lote_id'));
         $cliente = Cliente::findOrFail($request->validated('cliente_id'));
         abort_unless(UrbanizacionContext::loteBelongsToCurrent($lote), 403, 'No tienes acceso a esta urbanizacion');
-        abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
 
         $venta = $saleService->create($request->validated(), $request->user());
 
@@ -125,7 +123,6 @@ class VentaController extends Controller
         $lote = Lote::with('manzano')->findOrFail($request->validated('lote_id'));
         $cliente = Cliente::findOrFail($request->validated('cliente_id'));
         abort_unless(UrbanizacionContext::loteBelongsToCurrent($lote), 403, 'No tienes acceso a esta urbanizacion');
-        abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
 
         $saleService->update($venta, $request->validated(), $request->user(), $request->string('motivo_cambio')->toString());
 
@@ -156,7 +153,7 @@ class VentaController extends Controller
                 ->whereIn('concepto', ['anticipo', 'contado'])
                 ->where('estado', 'confirmado')
                 ->first(),
-            'clientes' => UrbanizacionContext::clientes(Cliente::query())->orderBy('nombre')->get(),
+            'clientes' => $this->clientesForForm($venta->cliente_id),
             'lotes' => UrbanizacionContext::lotes(Lote::with('manzano.urbanizacion', 'reservaActiva.cliente'))
                 ->where(fn ($query) => $query->whereIn('estado', ['disponible', 'reservado'])->orWhere('id', $venta->lote_id))
                 ->orderBy('codigo')
@@ -166,6 +163,19 @@ class VentaController extends Controller
                 'credito' => $settings->maxCuotasCredito($urbanizacionId),
             ],
         ];
+    }
+
+    private function clientesForForm(?int $selectedId = null)
+    {
+        $clientes = UrbanizacionContext::clientes(Cliente::query())->orderBy('nombre')->get();
+        if ($selectedId && ! $clientes->contains('id', $selectedId)) {
+            $selected = Cliente::find($selectedId);
+            if ($selected) {
+                $clientes->push($selected);
+            }
+        }
+
+        return $clientes;
     }
 
     private function authorizeEdit(Request $request, Venta $venta): void

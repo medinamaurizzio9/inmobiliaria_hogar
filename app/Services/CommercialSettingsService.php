@@ -15,6 +15,8 @@ class CommercialSettingsService
 
     public const RESERVA_DIAS_HABILES_ASESOR = 'reserva_dias_habiles_asesor';
 
+    public const PROTECCION_CLIENTE_DIAS = 'proteccion_cliente_dias';
+
     public const TIPO_CAMBIO_USD_BS = 'tipo_cambio_usd_bs';
 
     public const INCREMENTO_CREDITO_TIPO = 'incremento_credito_tipo';
@@ -61,6 +63,11 @@ class CommercialSettingsService
         $this->forgetResolvedSettings($setting->urbanizacion_id);
 
         return $setting;
+    }
+
+    public function clientProtectionDays(?int $urbanizacionId = null): int
+    {
+        return min(365, max(1, (int) $this->settings($urbanizacionId)[self::PROTECCION_CLIENTE_DIAS]));
     }
 
     public function tipoCambioUsdBs(?int $urbanizacionId = null): float
@@ -136,6 +143,7 @@ class CommercialSettingsService
         $setting = $this->settingModel($urbanizacionId);
         $setting->update([
             'reserva_dias_habiles_asesor' => max(1, (int) $data[self::RESERVA_DIAS_HABILES_ASESOR]),
+            'proteccion_cliente_dias' => min(365, max(1, (int) ($data[self::PROTECCION_CLIENTE_DIAS] ?? $setting->proteccion_cliente_dias ?? 30))),
             'tipo_cambio_usd_bs' => max(0, (float) $data[self::TIPO_CAMBIO_USD_BS]),
             'incremento_credito_tipo' => $data[self::INCREMENTO_CREDITO_TIPO],
             'incremento_credito_valor' => max(0, (float) $data[self::INCREMENTO_CREDITO_VALOR]),
@@ -238,6 +246,7 @@ class CommercialSettingsService
 
         return $this->resolvedSettings[$cacheKey] = [
             'reserva_dias_habiles_asesor' => max(1, (int) $setting->reserva_dias_habiles_asesor),
+            'proteccion_cliente_dias' => min(365, max(1, (int) ($setting->proteccion_cliente_dias ?? 30))),
             'tipo_cambio_usd_bs' => max(0, (float) $setting->tipo_cambio_usd_bs),
             'incremento_credito_tipo' => in_array($setting->incremento_credito_tipo, ['monto', 'porcentaje'], true) ? $setting->incremento_credito_tipo : 'monto',
             'incremento_credito_valor' => max(0, (float) $setting->incremento_credito_valor),
@@ -288,6 +297,7 @@ class CommercialSettingsService
 
         return [
             'reserva_dias_habiles_asesor' => max(1, (int) ($global[self::RESERVA_DIAS_HABILES_ASESOR] ?? 5)),
+            'proteccion_cliente_dias' => min(365, max(1, (int) ($global[self::PROTECCION_CLIENTE_DIAS] ?? 30))),
             'tipo_cambio_usd_bs' => max(0, (float) ($global[self::TIPO_CAMBIO_USD_BS] ?? 6.96)),
             'incremento_credito_tipo' => in_array($tipo, ['monto', 'porcentaje'], true) ? $tipo : 'monto',
             'incremento_credito_valor' => max(0, (float) ($global[self::INCREMENTO_CREDITO_VALOR] ?? 0)),

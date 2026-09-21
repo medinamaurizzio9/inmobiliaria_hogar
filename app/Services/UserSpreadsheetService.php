@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use PharData;
 use RuntimeException;
+use Throwable;
 use ZipArchive;
 
 class UserSpreadsheetService
@@ -56,6 +58,7 @@ class UserSpreadsheetService
         while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
             if ($headers === null) {
                 $headers = $this->normalizeHeaders($data);
+
                 continue;
             }
 
@@ -73,18 +76,24 @@ class UserSpreadsheetService
 
     private function rowsFromXlsx(string $path): array
     {
-        if (! class_exists(ZipArchive::class)) {
-            throw new RuntimeException('La extension ZipArchive de PHP es requerida para leer XLSX.');
-        }
-
-        $zip = new ZipArchive();
-        if ($zip->open($path) !== true) {
+        try {
+            if (class_exists(ZipArchive::class)) {
+                $archive = new ZipArchive;
+                if ($archive->open($path) !== true) {
+                    return [];
+                }
+            } else {
+                $archive = new PharData($path);
+            }
+        } catch (Throwable) {
             return [];
         }
 
-        $sharedStrings = $this->sharedStrings($zip);
-        $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
-        $zip->close();
+        $sharedStrings = $this->sharedStrings($archive);
+        $sheet = $this->archiveContent($archive, 'xl/worksheets/sheet1.xml');
+        if ($archive instanceof ZipArchive) {
+            $archive->close();
+        }
 
         if ($sheet === false) {
             return [];
@@ -122,9 +131,9 @@ class UserSpreadsheetService
         return array_map(fn (array $row) => $this->combineRow($headers, $row), $rows);
     }
 
-    private function sharedStrings(ZipArchive $zip): array
+    private function sharedStrings(ZipArchive|PharData $archive): array
     {
-        $content = $zip->getFromName('xl/sharedStrings.xml');
+        $content = $this->archiveContent($archive, 'xl/sharedStrings.xml');
         if ($content === false) {
             return [];
         }
@@ -140,6 +149,15 @@ class UserSpreadsheetService
         }
 
         return $strings;
+    }
+
+    private function archiveContent(ZipArchive|PharData $archive, string $name): string|false
+    {
+        if ($archive instanceof ZipArchive) {
+            return $archive->getFromName($name);
+        }
+
+        return isset($archive[$name]) ? $archive[$name]->getContent() : false;
     }
 
     private function normalizeHeaders(array $headers): array
@@ -236,12 +254,12 @@ class UserSpreadsheetService
             $size = strlen($content);
             $nameLength = strlen($name);
 
-            $localHeader = pack('VvvvvvVVVvv', 0x04034b50, 20, 0, 0, $time, $date, $crc, $size, $size, $nameLength, 0).$name;
+            $localHeader = pack('VvvvvvVVVvv', 0x04034B50, 20, 0, 0, $time, $date, $crc, $size, $size, $nameLength, 0).$name;
             $local .= $localHeader.$content;
 
             $central .= pack(
                 'VvvvvvvVVVvvvvvVV',
-                0x02014b50,
+                0x02014B50,
                 20,
                 20,
                 0,
@@ -266,7 +284,7 @@ class UserSpreadsheetService
         $entries = count($files);
         $centralSize = strlen($central);
         $centralOffset = strlen($local);
-        $end = pack('VvvvvVVv', 0x06054b50, 0, 0, $entries, $entries, $centralSize, $centralOffset, 0);
+        $end = pack('VvvvvVVv', 0x06054B50, 0, 0, $entries, $entries, $centralSize, $centralOffset, 0);
 
         return $local.$central.$end;
     }

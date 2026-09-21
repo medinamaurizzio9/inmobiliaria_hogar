@@ -22,7 +22,7 @@ class ReservationVisibilityService
             return array_values(array_unique($ids));
         }
 
-        if ($user->hasAnyRole(['asesor', 'vendedor'])) {
+        if ($user->hasRole('vendedor')) {
             return [$user->id];
         }
 

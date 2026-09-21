@@ -10,6 +10,7 @@ class UrbanizacionCommercialSetting extends Model
     protected $fillable = [
         'urbanizacion_id',
         'reserva_dias_habiles_asesor',
+        'proteccion_cliente_dias',
         'tipo_cambio_usd_bs',
         'incremento_credito_tipo',
         'incremento_credito_valor',
@@ -33,6 +34,7 @@ class UrbanizacionCommercialSetting extends Model
     {
         return [
             'reserva_dias_habiles_asesor' => 'integer',
+            'proteccion_cliente_dias' => 'integer',
             'tipo_cambio_usd_bs' => 'decimal:2',
             'incremento_credito_valor' => 'decimal:2',
             'max_cuotas_semicontado' => 'integer',

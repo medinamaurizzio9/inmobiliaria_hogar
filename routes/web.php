@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\AsesorController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CashMovementController;
+use App\Http\Controllers\ClientCommercialControlController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\ClientImportController;
 use App\Http\Controllers\CobranzaController;
 use App\Http\Controllers\CommercialSettingController;
 use App\Http\Controllers\CompradorUsuarioController;
@@ -122,6 +125,16 @@ Route::middleware('auth')->group(function (): void {
             Route::post('/lotes/comercial-masivo', [LoteCommercialUpdateController::class, 'bulkUpdate'])->middleware('can:ver lotes')->name('lotes.comercial-masivo');
             Route::resource('lotes', LoteController::class)->middlewareFor(['index', 'show'], 'can:ver lotes')->middlewareFor(['create', 'store'], 'can:crear lotes')->middlewareFor(['edit', 'update'], 'can:editar lotes')->middlewareFor(['destroy'], 'can:eliminar lotes');
             Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->middleware('can:ver clientes')->name('clientes.buscar');
+            Route::get('/clientes/coincidencias', [ClienteController::class, 'matches'])->middleware('can:crear clientes')->name('clientes.matches');
+            Route::middleware('can:importar clientes')->prefix('clientes/importar')->name('clientes.import.')->group(function (): void {
+                Route::get('/', [ClientImportController::class, 'create'])->name('create');
+                Route::get('/plantilla', [ClientImportController::class, 'template'])->name('template');
+                Route::post('/preview', [ClientImportController::class, 'preview'])->name('preview');
+                Route::get('/{batch}', [ClientImportController::class, 'show'])->name('show');
+                Route::post('/{batch}/confirmar', [ClientImportController::class, 'confirm'])->name('confirm');
+                Route::delete('/{batch}', [ClientImportController::class, 'cancel'])->name('cancel');
+                Route::get('/{batch}/reporte', [ClientImportController::class, 'report'])->name('report');
+            });
             Route::resource('clientes', ClienteController::class)->middlewareFor(['index', 'show'], 'can:ver clientes')->middlewareFor(['create', 'store'], 'can:crear clientes')->middlewareFor(['edit', 'update'], 'can:editar clientes')->middlewareFor(['destroy'], 'can:eliminar clientes');
             Route::resource('ventas', VentaController::class)->middlewareFor(['index', 'show'], 'can:ver ventas')->middlewareFor(['edit', 'update'], 'can:editar ventas')->middlewareFor(['create', 'store'], 'can:crear ventas')->middlewareFor(['destroy'], 'can:anular ventas');
             Route::get('/ventas/{venta}/reestructurar', [ReestructuracionController::class, 'create'])->name('ventas.reestructurar');
@@ -164,6 +177,7 @@ Route::middleware('auth')->group(function (): void {
                 Route::get('/cuotas', [ReportController::class, 'cuotas'])->name('cuotas');
                 Route::get('/ingresos', [ReportController::class, 'ingresos'])->name('ingresos');
                 Route::get('/estado-cuenta', [ReportController::class, 'estadoCuenta'])->name('estado-cuenta');
+                Route::get('/control-comercial-clientes', ClientCommercialControlController::class)->middleware('can:ver control comercial clientes')->name('control-comercial-clientes');
                 Route::get('/mejor-vendedor', [ReportController::class, 'mejorVendedor'])->middleware('can:ver reporte mejor vendedor')->name('mejor-vendedor');
                 Route::get('/mejor-vendedor/excel', [ReportController::class, 'mejorVendedorExcel'])->middleware('can:exportar reporte mejor vendedor')->name('mejor-vendedor.excel');
                 Route::get('/mejor-vendedor/pdf', [ReportController::class, 'mejorVendedorPdf'])->middleware('can:exportar reporte mejor vendedor')->name('mejor-vendedor.pdf');
@@ -219,9 +233,8 @@ Route::middleware('auth')->group(function (): void {
                     return view('administracion.auditoria.index', compact('audits'));
                 })->name('auditoria');
 
-                Route::get('/backups', function () {
-                    return view('administracion.backups.index');
-                })->name('backups');
+                Route::get('/backups', [BackupController::class, 'index'])->name('backups');
+                Route::post('/backups', [BackupController::class, 'store'])->name('backups.store');
                 Route::post('/noticias/{noticia}/estado', [NoticiaController::class, 'toggle'])->name('noticias.toggle');
                 Route::resource('noticias', NoticiaController::class)->except('show');
             });

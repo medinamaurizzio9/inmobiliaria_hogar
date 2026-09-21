@@ -84,7 +84,7 @@ class ReservaEdicionBuscadorTest extends TestCase
             ->assertJsonFragment(['id' => $cliente->id, 'nombre' => $cliente->nombre]);
     }
 
-    public function test_endpoint_respeta_urbanizacion_y_minimo_dos_caracteres(): void
+    public function test_endpoint_reutiliza_ci_global_y_respeta_minimo_dos_caracteres(): void
     {
         $this->seed();
 
@@ -97,7 +97,7 @@ class ReservaEdicionBuscadorTest extends TestCase
             ->withSession(['urbanizacion_id' => $segunda->id])
             ->getJson(route('clientes.buscar', ['q' => $cliente->documento]))
             ->assertOk()
-            ->assertJsonMissing(['id' => $cliente->id]);
+            ->assertJsonFragment(['id' => $cliente->id]);
 
         $this->actingAs($admin)
             ->withSession(['urbanizacion_id' => $primera->id])

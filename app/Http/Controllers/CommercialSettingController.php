@@ -21,6 +21,7 @@ class CommercialSettingController extends Controller
         return view('admin.configuracion-comercial', [
             'urbanizacion' => $urbanizacion,
             'reservaDiasHabilesAsesor' => $settings->reservaDiasHabilesAsesor($urbanizacionId),
+            'proteccionClienteDias' => $settings->clientProtectionDays($urbanizacionId),
             'priceSettings' => $settings->priceSettings($urbanizacionId),
         ]);
     }
@@ -33,6 +34,7 @@ class CommercialSettingController extends Controller
         $calculatorSettings = $settings->calculatorSettings($urbanizacionId);
 
         $request->merge([
+            'proteccion_cliente_dias' => $request->input('proteccion_cliente_dias', $settings->clientProtectionDays($urbanizacionId)),
             'tipo_cambio_usd_bs' => $request->input('tipo_cambio_usd_bs', $settings->tipoCambioUsdBs($urbanizacionId)),
             'incremento_credito_tipo' => $request->input('incremento_credito_tipo', $settings->incrementoCreditoTipo($urbanizacionId)),
             'incremento_credito_valor' => $request->input('incremento_credito_valor', $settings->incrementoCreditoValor($urbanizacionId)),
@@ -52,6 +54,7 @@ class CommercialSettingController extends Controller
 
         $data = $request->validate([
             'reserva_dias_habiles_asesor' => ['required', 'integer', 'min:1', 'max:30'],
+            'proteccion_cliente_dias' => ['required', 'integer', 'min:1', 'max:365'],
             'tipo_cambio_usd_bs' => ['required', 'numeric', 'min:0'],
             'incremento_credito_tipo' => ['required', 'in:monto,porcentaje'],
             'incremento_credito_valor' => ['required', 'numeric', 'min:0'],
@@ -71,6 +74,7 @@ class CommercialSettingController extends Controller
 
         $before = [
             'reserva_dias_habiles_asesor' => $settings->reservaDiasHabilesAsesor($urbanizacionId),
+            'proteccion_cliente_dias' => $settings->clientProtectionDays($urbanizacionId),
             ...$settings->priceSettings($urbanizacionId),
         ];
         $setting = $settings->updateForUrbanizacion($urbanizacionId, $data);

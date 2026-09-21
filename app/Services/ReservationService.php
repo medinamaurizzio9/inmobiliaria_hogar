@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ClientCommercialEvent;
 use App\Models\Lote;
 use App\Models\Reserva;
 use App\Models\User;
@@ -13,9 +14,10 @@ class ReservationService
     public function __construct(
         private LotService $lotService,
         private CashMovementService $cashMovementService,
-        private AuditService $auditService
-    ) {
-    }
+        private AuditService $auditService,
+        private ClientCommercialProtectionService $clientProtection,
+        private ClientCommercialEventService $clientEvents,
+    ) {}
 
     public function create(array $data, ?User $user): Reserva
     {
@@ -43,6 +45,17 @@ class ReservationService
 
             $this->lotService->syncStatusFromReservations($lote, 'reserva_creada', $user, 'Reserva creada para cliente #'.$reserva->cliente_id);
             $this->cashMovementService->ingresoReserva($reserva, (float) $reserva->monto_reserva, $data['metodo_pago'] ?? 'efectivo', $user, $data['referencia'] ?? null);
+
+            if ($this->clientProtection->getCommercialProtection($reserva->cliente)['active']) {
+                $this->clientEvents->registerCommercialEvent(
+                    $reserva->cliente,
+                    ClientCommercialEvent::PROTECTED_OPERATION,
+                    $user,
+                    (int) $lote->manzano()->value('urbanizacion_id'),
+                    null,
+                    ['operation_type' => 'reservation', 'operation_id' => $reserva->id],
+                );
+            }
 
             return $reserva;
         });

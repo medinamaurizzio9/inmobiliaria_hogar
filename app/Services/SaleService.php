@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ClientCommercialEvent;
 use App\Models\Lote;
 use App\Models\User;
 use App\Models\Venta;
@@ -18,7 +19,9 @@ class SaleService
         private AuditService $auditService,
         private LotPricingService $pricingService,
         private CommercialSettingsService $commercialSettings,
-        private ClientAccountProvisioner $clientAccountProvisioner
+        private ClientAccountProvisioner $clientAccountProvisioner,
+        private ClientCommercialProtectionService $clientProtection,
+        private ClientCommercialEventService $clientEvents,
     ) {}
 
     public function create(array $data, ?User $user): Venta
@@ -56,6 +59,17 @@ class SaleService
 
             $access = $this->clientAccountProvisioner->provision($venta->cliente);
             $venta->setAttribute('client_access_result', $access);
+
+            if ($this->clientProtection->getCommercialProtection($venta->cliente)['active']) {
+                $this->clientEvents->registerCommercialEvent(
+                    $venta->cliente,
+                    ClientCommercialEvent::PROTECTED_OPERATION,
+                    $user,
+                    (int) $lote->manzano()->value('urbanizacion_id'),
+                    null,
+                    ['operation_type' => 'sale', 'operation_id' => $venta->id],
+                );
+            }
 
             return $venta;
         });

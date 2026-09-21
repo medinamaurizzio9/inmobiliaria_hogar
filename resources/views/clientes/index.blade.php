@@ -7,6 +7,9 @@
         @can('exportar reportes')
             <a class="btn secondary" href="{{ route('export.csv', 'clientes') }}">Exportar CSV</a>
         @endcan
+        @can('importar clientes')
+            <a class="btn secondary" href="{{ route('clientes.import.create') }}">Importar clientes</a>
+        @endcan
         @can('crear clientes')
             <a class="btn" href="{{ route('clientes.create') }}">Nuevo</a>
         @endcan

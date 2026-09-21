@@ -110,7 +110,6 @@ class ReservaController extends Controller
 
         if ($request->filled('cliente_id')) {
             $cliente = Cliente::findOrFail($request->integer('cliente_id'));
-            abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
             $reserva->cliente_id = $cliente->id;
         }
 
@@ -122,7 +121,6 @@ class ReservaController extends Controller
         $lote = Lote::with('manzano')->findOrFail($request->validated('lote_id'));
         $cliente = Cliente::findOrFail($request->validated('cliente_id'));
         abort_unless(UrbanizacionContext::loteBelongsToCurrent($lote), 403, 'No tienes acceso a esta urbanizacion');
-        abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
         abort_if($request->user()->hasRole('vendedor') && $lote->estado !== 'disponible', 422, 'Solo puedes reservar lotes disponibles.');
         abort_if($request->user()->hasRole('vendedor') && ! UrbanizacionContext::userCanAccess($request->user(), (int) $lote->manzano->urbanizacion_id), 403, 'No tienes acceso a esta urbanizacion');
 
@@ -144,7 +142,6 @@ class ReservaController extends Controller
         abort_unless($request->user()->can('editar reservas'), 403, 'No tienes permiso para editar esta reserva.');
         abort_unless(UrbanizacionContext::reservaBelongsToCurrent($reserva), 403, 'No tienes acceso a esta urbanizacion');
         $cliente = Cliente::findOrFail($request->validated('cliente_id'));
-        abort_unless(UrbanizacionContext::clienteBelongsToCurrent($cliente), 403, 'No tienes acceso a este cliente.');
         $lote = Lote::with('manzano')->findOrFail($request->validated('lote_id'));
         abort_unless(UrbanizacionContext::loteBelongsToCurrent($lote), 403, 'No tienes acceso a esta urbanizacion');
 
@@ -188,13 +185,26 @@ class ReservaController extends Controller
     {
         return [
             'reserva' => $reserva,
-            'clientes' => UrbanizacionContext::clientes(Cliente::query())->orderBy('nombre')->get(),
+            'clientes' => $this->clientesForForm($reserva->cliente_id),
             'lotes' => UrbanizacionContext::lotes(Lote::with('manzano.urbanizacion'))
                 ->where(fn ($query) => $query->where('estado', 'disponible')->orWhere('id', $reserva->lote_id))
                 ->orderBy('codigo')
                 ->get(),
             'tiposOperacion' => Reserva::TIPOS_OPERACION,
         ];
+    }
+
+    private function clientesForForm(?int $selectedId = null)
+    {
+        $clientes = UrbanizacionContext::clientes(Cliente::query())->orderBy('nombre')->get();
+        if ($selectedId && ! $clientes->contains('id', $selectedId)) {
+            $selected = Cliente::find($selectedId);
+            if ($selected) {
+                $clientes->push($selected);
+            }
+        }
+
+        return $clientes;
     }
 
     private function sort(Request $request): array

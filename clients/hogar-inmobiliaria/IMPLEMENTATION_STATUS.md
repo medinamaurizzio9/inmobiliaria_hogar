@@ -4,7 +4,7 @@ Estado real: `ready_for_acceptance`
 
 Rama: `hogar-inmobiliaria`
 
-Fecha de actualización: 2026-09-09
+Fecha de actualización: 2026-09-21
 
 ## NEXT_TASK
 
@@ -15,6 +15,99 @@ desplegar siguiendo `docs/09-DEPLOYMENT.md`. No marcar producción hasta que el
 despliegue y el smoke test hayan ocurrido realmente.
 
 ## LAST_COMPLETED
+
+Importador masivo de personas/clientes con vista previa y trazabilidad por lote.
+
+Resultado verificado:
+
+- Comercial → Clientes incorpora Importar clientes, plantilla XLSX y flujo de subida, validación, vista previa y confirmación.
+- Formatos CSV/XLSX sin dependencia Composer nueva; lectura XLSX reutiliza `ZipArchive` o `PharData` como fallback. Límites: 5 MB y 5.000 filas.
+- Columnas: nombre y CI obligatorios; teléfono, email, dirección y email de asesor opcionales, con aliases explícitos y normalización de BOM/acentos/espacios.
+- Se reutilizan `ClientMatchingService` y `ClientRegistrationService`. CI existente se omite; duplicados internos compatibles se consolidan; contradicciones se bloquean; coincidencias de teléfono/email exigen aceptación por fila.
+- `created_by` conserva al importador y el responsable se resuelve solo por email exacto de usuario vendedor. Sin asesor, el importador es responsable conforme al alta manual.
+- Nuevos clientes reciben protección comercial vigente y control de concurrencia. No se crean ventas, reservas, lotes, créditos, cuotas, pagos ni movimientos.
+- `client_import_batches` y `client_import_rows` guardan hash SHA-256, importador, archivo, resumen y resultado por fila. No se conserva el archivo subido; previews abandonados expiran en 24 horas.
+- Permiso `importar clientes`: super administrador, administrador y gerente. Vendedor y supervisor no quedan habilitados.
+- Resultado descargable en CSV y documentación en `docs/CLIENT-IMPORT.md`.
+
+Pruebas dirigidas:
+
+```text
+ClientImportTest: 7 passed, 51 assertions
+ClientCommercialProtectionTest: 15 passed, 67 assertions
+RoleAndBackupInfrastructureTest: 3 passed, 11 assertions
+php artisan test: 617 passed, 2557 assertions
+npm.cmd run build: passed
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: UAT manual con archivo proporcionado por el cliente. Mantener sin commit.
+
+## PREVIOUS_COMPLETED_23
+
+Inicialización estructural de roles y recuperación del menú administrativo.
+
+Resultado verificado:
+
+- Catálogo canónico: `super administrador`, `administrador`, `gerente`, `supervisor`, `vendedor`, `cajero` y `cliente`, todos con guard `web`. `asesor` era un alias obsoleto: la entidad Asesor utiliza el rol `vendedor`.
+- Se separó `RolesAndPermissionsSeeder`, idempotente y sin usuarios/datos demo. `DatabaseSeeder` lo reutiliza antes de cargar su dataset de demostración.
+- Una migración incremental garantiza roles y permisos en instalaciones nuevas o existentes sin depender de ejecutar el seeder demo durante el despliegue.
+- La base local conserva `admin@hogar.test`, la marca HOGAR INMOBILIARIA y `URBANIZACIÓN LOCAL HOGAR`; se añadieron únicamente los roles faltantes con cero usuarios.
+- Las 35 rutas visibles del sidebar administrador respondieron HTTP 200, incluidas asesores, grupos comerciales, asignaciones, mejor vendedor y backups.
+- El botón Generar backup ahora ejecuta un servicio real. SQLite se copia de forma segura; MySQL usa `mysqldump` mediante argumentos separados y `MYSQL_PWD`, con ruta configurable por `MYSQLDUMP_PATH`, salida privada, limpieza de archivos parciales y error controlado.
+- En Windows/Laragon se generó mediante POST web `database_20260921_105912.sql` (85.607 bytes). La configuración por PATH mantiene compatibilidad con Ubuntu/Linux.
+- Se agregaron pruebas de catálogo sin datos demo, idempotencia, pantallas vacías y fallo controlado de backup.
+
+Pruebas dirigidas:
+
+```text
+RoleAndBackupInfrastructureTest: 3 passed, 11 assertions
+ClientCommercialProtectionTest: 15 passed, 67 assertions
+php artisan test: 610 passed, 2506 assertions
+npm.cmd run build: passed
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: revisión y commit consolidado posterior. Mantener sin commit.
+
+## PREVIOUS_COMPLETED_22
+
+Protección comercial reusable de clientes y unicidad global de persona por CI.
+
+Resultado verificado:
+
+- `clientes` representa una persona única y el CI normalizado se protege con constraint global; una misma persona conserva una sola cuenta portal y puede acumular ventas, reservas, lotes y créditos independientes en distintas urbanizaciones.
+- La migración incremental agrega normalización de CI/teléfono/correo, asesor responsable, inicio/vencimiento de protección y configuración `proteccion_cliente_dias` (30 por defecto). La base local `hogar_inmobiliaria` fue verificada con cero clientes, por lo que esta instalación no requiere reconciliación histórica.
+- Administrador y gerente pueden cambiar el plazo de 1 a 365 días desde Configuración comercial. Cada alta toma el valor vigente; nuevas actividades no renuevan el plazo ni reasignan asesor automáticamente.
+- El formulario consulta coincidencias al perder foco y el backend repite la decisión. CI exacto bloquea el duplicado y presenta datos reales; teléfono/correo generan advertencia no bloqueante con confirmación expresa.
+- La creación concurrente combina transacción, bloqueo y constraint único. Los servicios de matching, protección, registro y eventos quedan disponibles para un futuro importador CSV/Excel.
+- Reservas y ventas pueden reutilizar un cliente existente en otra urbanización. Una operación dentro de protección se permite y se audita sin mezclar cuotas ni saldos.
+- La ficha incorpora Control comercial y Propiedades/compras. Los vendedores reciben CI enmascarado en coincidencias y no acceden a totales ni PDF financieros; se reutilizan los permisos `ver ventas` y `cobrar cuotas`.
+- `client_commercial_events` registra intentos de CI duplicado, coincidencias por teléfono/correo y operaciones protegidas, con actor, responsables, urbanización y metadatos mínimos.
+- El reporte Control comercial de clientes ofrece cinco indicadores, contador de revisión, filtros por fechas, cliente/CI, asesor, supervisor/equipo, evento y vigencia, con paginación de 50. Supervisor queda limitado a su equipo.
+- Se añadió el permiso `ver control comercial clientes` para administrador, gerente y supervisor, y la guía reusable `docs/CLIENT-COMMERCIAL-PROTECTION.md`.
+- UAT local ejecutado con `URBANIZACIÓN UAT HOGAR`: login, selección, dashboard, clientes, configuración comercial, reportes y Control Comercial respondieron HTTP 200. El branding local se configuró como HOGAR INMOBILIARIA.
+- El UAT confirmó CI normalizado único, coincidencias por teléfono/correo, plazo configurable 30 → 45 → 30 días, dos ventas financiadas del mismo cliente en dos urbanizaciones, cuotas independientes y una sola cuenta portal.
+- Se corrigió el reporte para que una instalación mínima sin el rol opcional `supervisor` muestre una lista vacía en vez de lanzar HTTP 500.
+
+Pruebas:
+
+```text
+php artisan optimize:clear: passed
+php artisan migrate --force: passed (Nothing to migrate; ambas migraciones constan como Ran)
+php artisan test --filter=ClientCommercialProtectionTest: 15 passed, 67 assertions
+pruebas dirigidas de protección/duplicados/portal/PDF/regresiones: passed
+php artisan test: 607 passed, 2495 assertions
+npm.cmd run build: passed
+vendor/bin/pint --test --dirty: passed
+git diff --check: passed
+```
+
+Pendiente real: ejecutar UAT manual de alta, coincidencias, reutilización entre urbanizaciones, permisos y reporte antes del deploy. Mantener el cambio sin commit para el commit consolidado posterior.
+
+## PREVIOUS_COMPLETED_21
 
 Estandarización reusable y protección visual de logos del sistema.
 

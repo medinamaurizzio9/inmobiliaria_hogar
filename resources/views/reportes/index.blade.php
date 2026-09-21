@@ -18,6 +18,7 @@
     <a class="card report-link-card" href="{{ route('reportes.cuotas') }}"><strong>Cuotas pendientes/vencidas</strong><span>Plan de pagos, saldos y vencimientos.</span></a>
     <a class="card report-link-card" href="{{ route('reportes.ingresos') }}"><strong>Ingresos</strong><span>Movimientos de caja de tipo ingreso.</span></a>
     <a class="card report-link-card" href="{{ route('reportes.estado-cuenta') }}"><strong>Estado de cuenta</strong><span>Consulta individual por cliente.</span></a>
+    @can('ver control comercial clientes')<a class="card report-link-card" href="{{ route('reportes.control-comercial-clientes') }}"><strong>Control comercial de clientes</strong><span>Protección, coincidencias e intentos de duplicado.</span></a>@endcan
     @can('exportar reportes')<a class="card report-link-card" href="{{ route('reportes.exportaciones') }}"><strong>Exportaciones</strong><span>Descargas CSV por modulo.</span></a>@endcan
 </section>
 @endsection

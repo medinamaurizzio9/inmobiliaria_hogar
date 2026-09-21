@@ -18,94 +18,12 @@ use App\Models\User;
 use App\Models\Venta;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        $permissions = [
-            'ver dashboard',
-            'ver lotes',
-            'ver clientes',
-            'ver ventas',
-            'ver reservas',
-            'crear urbanizaciones',
-            'editar urbanizaciones',
-            'eliminar urbanizaciones',
-            'crear manzanos',
-            'editar manzanos',
-            'eliminar manzanos',
-            'crear lotes',
-            'editar lotes',
-            'eliminar lotes',
-            'crear clientes',
-            'editar clientes',
-            'eliminar clientes',
-            'crear ventas',
-            'editar ventas',
-            'editar ventas anuladas',
-            'anular ventas',
-            'crear reservas',
-            'editar reservas',
-            'cancelar reservas',
-            'ver recibo reserva',
-            'descargar recibo reserva',
-            'imprimir recibo reserva',
-            'cobrar cuotas',
-            'modificar cuotas',
-            'convertir reservas',
-            'ver reservas equipo',
-            'anular caja',
-            'ver reportes',
-            'exportar reportes',
-            'ver reporte reservas',
-            'exportar reporte reservas',
-            'ver reporte mejor vendedor',
-            'exportar reporte mejor vendedor',
-            'administrar usuarios',
-            'crear supervisores',
-            'editar supervisores',
-            'desactivar supervisores',
-            'crear grupos comerciales',
-            'editar grupos comerciales',
-            'crear asesores',
-            'editar asesores',
-            'desactivar asesores',
-            'asignar urbanizaciones a asesores',
-            'resetear contraseña asesor',
-        ];
-
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
-        }
-
-        $administrador = Role::firstOrCreate(['name' => 'administrador', 'guard_name' => 'web']);
-        $gerente = Role::firstOrCreate(['name' => 'gerente', 'guard_name' => 'web']);
-        $supervisor = Role::firstOrCreate(['name' => 'supervisor', 'guard_name' => 'web']);
-        $vendedor = Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web']);
-        $cajero = Role::firstOrCreate(['name' => 'cajero', 'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'cliente', 'guard_name' => 'web']);
-
-        $cajero->syncPermissions([
-            'ver dashboard',
-            'ver lotes',
-            'ver clientes',
-            'cobrar cuotas',
-            'ver recibo reserva',
-            'descargar recibo reserva',
-            'imprimir recibo reserva',
-        ]);
-
-        $administrador->syncPermissions($permissions);
-        $gerente->syncPermissions(['ver dashboard', 'ver lotes', 'ver clientes', 'ver ventas', 'ver reservas', 'crear lotes', 'editar lotes', 'crear clientes', 'editar clientes', 'crear ventas', 'editar ventas', 'anular ventas', 'crear reservas', 'cancelar reservas', 'cobrar cuotas', 'anular caja', 'ver reportes', 'exportar reportes', 'ver reporte reservas', 'exportar reporte reservas', 'ver reporte mejor vendedor', 'exportar reporte mejor vendedor']);
-        $supervisor->syncPermissions(['ver dashboard', 'ver lotes', 'ver clientes', 'ver ventas', 'ver reservas', 'ver reservas equipo', 'crear clientes', 'editar clientes', 'crear ventas', 'crear reservas', 'cancelar reservas', 'ver recibo reserva', 'descargar recibo reserva', 'imprimir recibo reserva', 'crear asesores', 'editar asesores', 'desactivar asesores', 'asignar urbanizaciones a asesores', 'resetear contraseña asesor']);
-        $vendedor->syncPermissions(['ver dashboard', 'ver lotes', 'ver clientes', 'ver reservas', 'crear clientes', 'editar clientes', 'crear reservas', 'ver recibo reserva', 'descargar recibo reserva', 'imprimir recibo reserva']);
-        $supervisor->givePermissionTo(['ver reportes', 'ver reporte reservas', 'exportar reporte reservas']);
+        $this->call(RolesAndPermissionsSeeder::class);
 
         $admin = User::factory()->create(['name' => 'Administrador Impacto', 'email' => 'admin@impacto.test']);
         $admin->assignRole('administrador');
@@ -114,7 +32,7 @@ class DatabaseSeeder extends Seeder
             'modelo' => 'Role',
             'accion' => 'configurar_roles_permisos',
             'descripcion' => 'Roles y permisos iniciales configurados por seeder.',
-            'datos_nuevos' => ['permissions' => $permissions],
+            'datos_nuevos' => ['permissions' => RolesAndPermissionsSeeder::PERMISSIONS],
             'created_at' => now(),
         ]);
 

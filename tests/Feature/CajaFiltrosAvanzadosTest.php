@@ -256,7 +256,7 @@ class CajaFiltrosAvanzadosTest extends TestCase
         ]);
         $cliente = Cliente::create([
             'nombre' => $overrides['cliente_nombre'] ?? 'Cliente Filtro',
-            'documento' => $overrides['cliente_documento'] ?? 'CI-12345',
+            'documento' => $overrides['cliente_documento'] ?? 'CI-'.uniqid(),
         ]);
         $venta = Venta::create([
             'lote_id' => $lote->id,

@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreClienteRequest extends FormRequest
 {
@@ -16,16 +15,7 @@ class StoreClienteRequest extends FormRequest
 
     public function rules(): array
     {
-        $cliente = $this->route('cliente');
-        $clienteId = $cliente?->id;
-
         $documentoRules = ['nullable', 'string', 'max:80'];
-
-        if (! $this->isMethod('post')) {
-            $documentoRules[] = Rule::unique('clientes', 'documento')
-                ->where(fn ($query) => $query->where('urbanizacion_id', session('urbanizacion_id')))
-                ->ignore($clienteId);
-        }
 
         return [
             'nombre' => ['required', 'string', 'max:255'],
@@ -34,6 +24,7 @@ class StoreClienteRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'direccion' => ['nullable', 'string'],
             'lote_id' => ['nullable', 'integer', 'exists:lotes,id'],
+            'confirm_potential_match' => ['nullable', 'boolean'],
         ];
     }
 

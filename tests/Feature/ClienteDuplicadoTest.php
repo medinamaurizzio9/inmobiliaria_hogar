@@ -35,7 +35,7 @@ class ClienteDuplicadoTest extends TestCase
         $this->assertSame(1, Cliente::where('urbanizacion_id', $urbanizacion->id)->where('documento', $cliente->documento)->count());
     }
 
-    public function test_permite_mismo_documento_en_otra_urbanizacion(): void
+    public function test_no_duplica_la_misma_persona_en_otra_urbanizacion(): void
     {
         $this->seed();
 
@@ -44,19 +44,19 @@ class ClienteDuplicadoTest extends TestCase
         $segunda = Urbanizacion::whereKeyNot($primera->id)->firstOrFail();
         $cliente = Cliente::where('urbanizacion_id', $primera->id)->firstOrFail();
 
-        $this->actingAs($admin)
+        $countBefore = Cliente::count();
+
+        $this->from(route('clientes.create'))->actingAs($admin)
             ->withSession(['urbanizacion_id' => $segunda->id])
             ->post(route('clientes.store'), [
                 'nombre' => 'Cliente otra urbanizacion',
                 'documento' => $cliente->documento,
                 'telefono' => '71111111',
             ])
-            ->assertRedirect(route('clientes.index'));
+            ->assertRedirect(route('clientes.create'))
+            ->assertSessionHas('duplicate_cliente_id', $cliente->id);
 
-        $this->assertDatabaseHas('clientes', [
-            'urbanizacion_id' => $segunda->id,
-            'documento' => $cliente->documento,
-        ]);
+        $this->assertSame($countBefore, Cliente::count());
     }
 
     public function test_muestra_datos_del_cliente_existente_y_quien_lo_registro(): void
