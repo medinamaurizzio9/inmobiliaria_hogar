@@ -76,8 +76,8 @@ class BrandLogoRegressionTest extends TestCase
             resource_path('views/layouts/partials/sidebar.blade.php'),
             resource_path('views/layouts/partials/topbar.blade.php'),
             resource_path('views/auth/login.blade.php'),
-            resource_path('views/public/portal.blade.php'),
-            resource_path('views/disponibilidad/index.blade.php'),
+            resource_path('views/components/public/header.blade.php'),
+            resource_path('views/components/public/footer.blade.php'),
             resource_path('views/public/recibos-verificar.blade.php'),
             resource_path('views/offline.blade.php'),
         ];
@@ -87,6 +87,10 @@ class BrandLogoRegressionTest extends TestCase
             $this->assertStringContainsString('<x-brand-logo', $markup, $view);
             $this->assertStringNotContainsString('style="max-width:72px', $markup, $view);
         }
+
+        $projectPage = file_get_contents(resource_path('views/disponibilidad/index.blade.php'));
+        $this->assertStringContainsString('<x-public.header', $projectPage);
+        $this->assertStringNotContainsString('style="max-width:72px', $projectPage);
     }
 
     public function test_public_login_project_and_offline_pages_render_logo_variants(): void
@@ -103,6 +107,42 @@ class BrandLogoRegressionTest extends TestCase
         $this->get(route('pwa.offline'))->assertOk()
             ->assertSee('brand-logo--pwa', false)
             ->assertSee('pwa/icon-192.png', false);
+    }
+
+    public function test_public_header_shows_only_valid_logo_or_institutional_fallback(): void
+    {
+        $this->seed();
+        Storage::fake('public');
+        Storage::disk('public')->put('branding/hogar.webp', 'logo');
+        SystemSetting::updateOrCreate(['key' => 'system_name'], ['value' => 'HOGAR INMOBILIARIA']);
+        SystemSetting::updateOrCreate(['key' => 'logo_main'], ['value' => 'branding/hogar.webp']);
+        Cache::forget('system_settings.all');
+
+        $content = $this->get('/')->assertOk()->getContent();
+        preg_match('/<header class="site-header".*?<\/header>/s', $content, $header);
+        $this->assertStringContainsString(Storage::disk('public')->url('branding/hogar.webp'), $header[0]);
+        $this->assertStringNotContainsString('brand-logo-name', $header[0]);
+        $this->assertStringContainsString('href="'.route('public.home').'"', $header[0]);
+
+        SystemSetting::updateOrCreate(['key' => 'logo_main'], ['value' => 'branding/inexistente.webp']);
+        Cache::forget('system_settings.all');
+        $content = $this->get('/')->assertOk()->getContent();
+        preg_match('/<header class="site-header".*?<\/header>/s', $content, $header);
+        $this->assertStringNotContainsString('<img', $header[0]);
+        $this->assertStringContainsString('brand-logo-fallback--public-header', $header[0]);
+        $this->assertStringContainsString('HOGAR INMOBILIARIA', $header[0]);
+    }
+
+    public function test_project_detail_reuses_global_public_header(): void
+    {
+        $this->seed();
+        $urbanizacion = Urbanizacion::query()->where('estado', 'activa')->firstOrFail();
+
+        $this->get(route('disponibilidad.urbanizacion', $urbanizacion->slug))->assertOk()
+            ->assertSee('class="site-header"', false)
+            ->assertSee('data-portal-menu', false)
+            ->assertSee(route('public.home'), false)
+            ->assertDontSee('project-public-header', false);
     }
 
     public function test_authenticated_layout_renders_sidebar_and_mobile_topbar_variants(): void

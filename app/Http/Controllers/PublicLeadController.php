@@ -13,6 +13,7 @@ class PublicLeadController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
+            'website' => ['nullable', 'prohibited'],
             'nombre' => ['required', 'string', 'max:150'],
             'celular' => ['required', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:150'],
@@ -20,6 +21,8 @@ class PublicLeadController extends Controller
             'lote_id' => ['nullable', 'integer'],
             'mensaje' => ['required', 'string', 'max:1500'],
         ]);
+
+        unset($data['website']);
 
         if (! empty($data['lote_id'])) {
             $validLot = Lote::query()->whereKey($data['lote_id'])->where('estado', 'disponible')

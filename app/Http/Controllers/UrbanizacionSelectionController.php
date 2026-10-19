@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Urbanizacion;
 use App\Support\UrbanizacionContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +12,7 @@ class UrbanizacionSelectionController extends Controller
     public function index(Request $request): View
     {
         $urbanizaciones = UrbanizacionContext::accessibleUrbanizaciones($request->user())
+            ->load('publicSetting')
             ->loadCount([
                 'lotes as total_lotes',
                 'lotes as disponibles_count' => fn ($query) => $query->where('estado', 'disponible'),

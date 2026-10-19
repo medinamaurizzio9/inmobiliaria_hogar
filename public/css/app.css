@@ -1329,7 +1329,8 @@ body { background: var(--crm-canvas); color: #20251f; font-family: Inter, ui-san
 /* Urbanizaciones compartidas: portal público, Mi cuenta y reserva de visitas */
 .urbanization-card{display:flex;min-height:445px;flex-direction:column;border-color:#e6e8ec;box-shadow:0 8px 24px rgba(16,24,40,.07),0 2px 6px rgba(16,24,40,.03)}
 .urbanization-card .client-project-image{height:190px;min-height:190px;padding:10px;border-radius:0;background:#f3f4f6}
-.urbanization-card .client-project-image img.technical-plan{object-fit:contain;transition:transform .15s}
+.urbanization-card .client-project-image img.commercial-cover{object-fit:cover;transition:transform .15s}
+.commercial-cover-placeholder{display:grid;place-items:center;gap:7px;color:#557061;text-align:center}.commercial-cover-placeholder small{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
 .urbanization-card:hover .client-project-image img{transform:scale(1.015)}
 .urbanization-card .client-project-body{display:flex;height:100%;flex-direction:column}
 .urbanization-card .client-project-counts{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:12px 0;border-top:1px solid #e6e8ec;border-bottom:1px solid #e6e8ec}

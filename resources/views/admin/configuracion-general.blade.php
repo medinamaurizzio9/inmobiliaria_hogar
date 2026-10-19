@@ -27,6 +27,22 @@
     <div class="field"><label>Pie de pagina</label><input name="footer_text" value="{{ old('footer_text', $settings['footer_text']) }}"></div>
     <div class="field"><label>Color principal</label><input type="color" name="primary_color" value="{{ old('primary_color', $settings['primary_color']) }}"></div>
     <div class="field"><label>Color secundario</label><input type="color" name="secondary_color" value="{{ old('secondary_color', $settings['secondary_color']) }}"></div>
+    <div class="field full">
+        <h2>Landing</h2>
+        <p class="muted">Banner principal exclusivo de la portada pública. Resolución recomendada: 1920 × 900 px. No se utilizan planos técnicos como reemplazo.</p>
+    </div>
+    <div class="field full image-setting">
+        <label>Banner principal de la portada</label>
+        @if($settings['landing_hero_image_url'])
+            <div class="setting-image-preview background-preview">
+                <img src="{{ $settings['landing_hero_image_url'] }}" alt="Banner principal actual">
+            </div>
+            <label class="image-remove"><input type="checkbox" name="remove_images[]" value="landing_hero_image" onchange="if(this.checked&&!confirm('¿Seguro que deseas quitar el banner principal?'))this.checked=false"> Quitar imagen</label>
+        @endif
+        <input type="file" name="landing_hero_image" accept="image/jpeg,image/png,image/webp">
+        <span class="muted">JPG, PNG o WebP. Al reemplazarla, la imagen anterior se elimina únicamente después de guardar correctamente la nueva configuración.</span>
+    </div>
+    <div class="field full"><h2>Identidad y acceso</h2></div>
     @foreach(['logo_main' => 'Logo principal', 'logo_login' => 'Logo para login', 'login_background' => 'Imagen fondo login', 'logo_pdf' => 'Logo para PDF'] as $key => $label)
         <div class="field image-setting">
             <label>{{ $label }}</label>

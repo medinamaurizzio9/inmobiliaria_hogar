@@ -8,8 +8,8 @@
 @if (session('status')) <div class="alert success">{{ session('status') }}</div> @endif
 <form class="form card public-page-admin" method="POST" enctype="multipart/form-data" action="{{ route('urbanizaciones.public-page.update', $urbanizacion) }}">
     @csrf @method('PUT')
-    <div class="field full"><h2>Hero</h2><p class="muted">Imagen JPG, PNG o WebP de hasta 8 MB. Se optimiza a un máximo de 1920 × 1080.</p></div>
-    <div class="field full"><label>Imagen de fondo</label><input type="file" name="hero_image" accept="image/jpeg,image/png,image/webp"></div>
+    <div class="field full"><h2>Portada comercial</h2><p class="muted">La misma fotografía se utiliza en la página pública y en las tarjetas de «Nuestros proyectos». También puede administrarse desde Datos generales. JPG, PNG o WebP de hasta 8 MB.</p></div>
+    <div class="field full"><label>Fotografía de portada</label><input type="file" name="hero_image" accept="image/jpeg,image/png,image/webp"></div>
     @if($urbanizacion->publicSetting?->heroUrl())
         <div class="field full"><img class="public-hero-preview" src="{{ $urbanizacion->publicSetting->heroUrl() }}" alt="Hero actual de {{ $urbanizacion->nombre }}"><label class="check-row"><input type="checkbox" name="remove_hero" value="1"> Eliminar imagen actual</label></div>
     @endif

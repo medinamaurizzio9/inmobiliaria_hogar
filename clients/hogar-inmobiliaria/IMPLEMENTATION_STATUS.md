@@ -4,17 +4,56 @@ Estado real: `ready_for_acceptance`
 
 Rama: `hogar-inmobiliaria`
 
-Fecha de actualización: 2026-09-21
+Fecha de actualización: 2026-10-19
 
 ## NEXT_TASK
 
-UAT / Deploy de Hogar Inmobiliaria.
-
-Ejecutar `ACCEPTANCE_CHECKLIST.md` en staging, resolver incidencias reales y
-desplegar siguiendo `docs/09-DEPLOYMENT.md`. No marcar producción hasta que el
-despliegue y el smoke test hayan ocurrido realmente.
+UAT de contenido y diseño público con la información corporativa definitiva:
+logo, imágenes, teléfonos, WhatsApp, correo, dirección y testimonios reales
+autorizados. Después, ejecutar el checklist de staging antes de desplegar.
 
 ## LAST_COMPLETED
+
+Separación de imágenes públicas y técnicas.
+
+Resultado implementado:
+
+- Nueva configuración `landing_hero_image` para el banner global administrable desde Configuración General → Landing, independiente de `login_background` y de cualquier urbanización.
+- El banner permite carga, reemplazo y eliminación segura; se optimiza mediante `ManagedImageService` y usa fondo marfil/verde cuando está vacío.
+- Se reutilizó `urbanizacion_public_settings.hero_image` como portada comercial por urbanización, evitando crear una columna duplicada. Puede administrarse desde Datos generales y desde Página pública.
+- Las tarjetas públicas, selector de urbanización y portal comprador utilizan únicamente la portada comercial o un placeholder corporativo.
+- `plano_imagen` queda limitado a formularios/visores técnicos, GPS, lotes, manzanos y disponibilidad; no se modificaron archivos de planos, coordenadas, marcadores, zoom ni pan.
+- Migración `2026_10_19_000001_add_landing_hero_image_system_setting.php` aplicada localmente.
+- Verificación visual real de la portada sin imagen en 1440 × 1000 y 390 × 844: fallback claro, degradado legible, tarjetas con placeholder y sin overflow horizontal.
+- La cabecera pública reutilizable muestra solo la imagen cuando existe un logo válido y reserva el nombre institucional para el fallback sin imagen; mantiene `object-fit: contain`, 92 px en escritorio y 60 px en móvil.
+- El detalle público de urbanización dejó de mantener una cabecera paralela y reutiliza `x-public.header`, con navegación, acceso y menú hamburguesa compartidos.
+- Verificación visual real de la cabecera en 1440 × 1000 y 390 × 844: sin texto duplicado, sin imagen rota, enlace a Inicio correcto, menú móvil funcional y sin overflow horizontal.
+
+Pruebas: `628 passed`, `2638 assertions`; build, Pint y `git diff --check` aprobados. Sin commit, push ni deploy.
+
+## PREVIOUS_COMPLETED_25
+
+Rediseño premium del sitio público de HOGAR INMOBILIARIA.
+
+Resultado implementado:
+
+- Layout público compartido con header, navegación responsive, acceso al CRM, footer, SEO básico y PWA existente.
+- Portada y páginas Nosotros, Urbanizaciones, Testimonios, Preguntas frecuentes y Contacto integradas en Laravel.
+- Componentes reutilizables para encabezados, estadísticas, beneficios, urbanizaciones, CTA de WhatsApp, FAQ y datos de contacto.
+- Urbanizaciones, disponibilidad, noticias y canales comerciales usan exclusivamente datos reales/configurados; los testimonios permanecen en estado vacío hasta disponer de contenido autorizado.
+- Formulario de contacto conserva CSRF, validación, persistencia en `public_leads` y rate limit; se añadió honeypot antispam sin crear clientes ni operaciones comerciales.
+- Modal de acceso y checkbox `remember` verificados en móvil; menú, FAQ y ausencia de overflow horizontal comprobados en 390 × 844.
+- No se modificaron mapa, coordenadas, autenticación, permisos, reservas, ventas, pagos ni estrategia del service worker.
+- Corrección visual posterior: eliminado el elemento legado `portal-hero` que, por reglas históricas de `app.css`, generaba un bloque oscuro de 720 px pese a estar marcado `hidden`.
+- Hero ajustado a una altura editorial más equilibrada, CTA principal/secundario en el orden aprobado y fallback marfil/verde cuando no existe imagen administrable.
+- El fallback público del logo dejó de heredar el degradado morado del CRM; los logos configurados continúan resolviéndose mediante `SystemSettingsService` y el componente `brand-logo`.
+- El sitio público omite los textos técnicos predeterminados `Sistema Integral de Terrenos` y `Version piloto - MVP funcional`, pero conserva subtítulos y pies institucionales cuando han sido realmente configurados.
+- La referencia compuesta de 1717 × 916 px se preserva en `public/branding/referencias/` y se separó en cuatro WebP optimizados: hero, fallback de urbanización, imagen institucional de Nosotros y complemento visual de proyectos.
+- Los nuevos assets son exclusivamente fallbacks: `login_background` y las imágenes reales de cada urbanización conservan prioridad, sin cambios de base de datos ni reemplazo de archivos administrados.
+
+Pruebas: `621 passed`, `2593 assertions`; build, Pint y `git diff --check` aprobados. Sin commit, push ni deploy.
+
+## PREVIOUS_COMPLETED_24
 
 Importador masivo de personas/clientes con vista previa y trazabilidad por lote.
 

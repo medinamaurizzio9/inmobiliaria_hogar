@@ -7,17 +7,12 @@
     @include('partials.pwa-head')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/public-site.css') }}?v=2">
+    <link rel="stylesheet" href="{{ asset('css/public-site-compat.css') }}?v=5">
 </head>
-<body class="project-public-body">
+<body class="project-public-body hogar-public">
 <main class="project-public-page">
-    <header class="public-header crm-public-header project-public-header">
-        <a class="public-brand" href="{{ url('/') }}">
-            <x-brand-logo variant="public-header" />
-            <span><strong>{{ $systemSettings['system_name'] }}</strong><small>{{ $systemSettings['system_subtitle'] }}</small></span>
-        </a>
-        <nav><a href="#informacion">Información</a><a href="#disponibilidad">Disponibilidad</a><a href="#consulta">Contacto</a></nav>
-        <a class="btn secondary" href="{{ route('login') }}">Iniciar sesión</a>
-    </header>
+    <x-public.header />
 
     @if($urbanizacion)
         @php
@@ -110,6 +105,9 @@
     <a class="btn whatsapp" data-dialog-whatsapp target="_blank" rel="noopener noreferrer" hidden><i class="fa-brands fa-whatsapp"></i> Consultar por WhatsApp</a>
 </dialog>
 <script src="{{ asset('js/map-zoom.js') }}"></script>
+<script src="{{ asset('js/password-toggle.js') }}"></script>
+<script src="{{ asset('js/public-portal.js') }}"></script>
+<script src="{{ asset('js/public-site.js') }}?v=2"></script>
 <script src="{{ asset('js/pwa.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {

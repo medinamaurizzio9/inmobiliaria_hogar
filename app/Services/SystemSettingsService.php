@@ -16,6 +16,7 @@ class SystemSettingsService
         'logo_main',
         'logo_login',
         'login_background',
+        'landing_hero_image',
         'logo_pdf',
         'company_name',
         'razon_social',
@@ -47,6 +48,7 @@ class SystemSettingsService
                 'logo_main' => $settings['logo_main'] ?? '',
                 'logo_login' => $settings['logo_login'] ?? '',
                 'login_background' => $settings['login_background'] ?? '',
+                'landing_hero_image' => $settings['landing_hero_image'] ?? '',
                 'logo_pdf' => $settings['logo_pdf'] ?? '',
                 'company_name' => $settings['company_name'] ?? 'IMPACTO URBANIZACIONES',
                 'razon_social' => $settings['razon_social'] ?? 'IMPACTO URBANIZACIONES',
@@ -65,7 +67,7 @@ class SystemSettingsService
             ];
         });
 
-        foreach (['logo_main', 'logo_login', 'login_background', 'logo_pdf'] as $key) {
+        foreach (['logo_main', 'logo_login', 'login_background', 'landing_hero_image', 'logo_pdf'] as $key) {
             $result[$key.'_url'] = $this->publicImageUrl($result[$key]);
             $result[$key.'_path'] = $this->publicImagePath($result[$key]);
         }

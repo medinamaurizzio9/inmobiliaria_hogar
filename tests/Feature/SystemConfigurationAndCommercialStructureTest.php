@@ -224,7 +224,7 @@ class SystemConfigurationAndCommercialStructureTest extends TestCase
             ->assertDontSee('/storage/storage/', false);
     }
 
-    public function test_fondo_del_login_es_configurable_y_se_muestra_en_el_acceso(): void
+    public function test_fondo_del_login_no_se_reutiliza_como_banner_del_landing(): void
     {
         Storage::fake('public');
         [$admin, $urbanizacion] = $this->adminContext();
@@ -251,9 +251,9 @@ class SystemConfigurationAndCommercialStructureTest extends TestCase
 
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('class="portal-hero"', false)
-            ->assertSee('storage/'.$background, false)
-            ->assertSee('desktop-login', false)
+            ->assertSee('class="site-hero"', false)
+            ->assertDontSee('storage/'.$background, false)
+            ->assertSee('site-login', false)
             ->assertSee('mobile-login', false);
     }
 

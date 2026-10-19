@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Urbanizacion;
+use App\Services\ManagedImageService;
 use App\Services\PlanImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -29,11 +31,23 @@ class UrbanizacionController extends Controller
         $data = $this->validated($request);
         $storedPlan = $data['_stored_plan'] ?? null;
         unset($data['_stored_plan']);
-
         try {
-            Urbanizacion::create($data);
+            $commercialImage = $this->storeCommercialImage($request);
         } catch (\Throwable $exception) {
             $this->deleteStoredPlan($storedPlan);
+            throw $exception;
+        }
+
+        try {
+            DB::transaction(function () use ($data, $commercialImage): void {
+                $urbanizacion = Urbanizacion::create($data);
+                if ($commercialImage) {
+                    $urbanizacion->publicSetting()->create(['hero_image' => $commercialImage]);
+                }
+            });
+        } catch (\Throwable $exception) {
+            $this->deleteStoredPlan($storedPlan);
+            $this->deleteCommercialImage($commercialImage);
             throw $exception;
         }
 
@@ -42,6 +56,8 @@ class UrbanizacionController extends Controller
 
     public function edit(Urbanizacion $urbanizacion): View
     {
+        $urbanizacion->load('publicSetting');
+
         return view('urbanizaciones.form', compact('urbanizacion'));
     }
 
@@ -49,19 +65,37 @@ class UrbanizacionController extends Controller
     {
         $oldImage = $urbanizacion->plano_imagen;
         $oldOriginal = $urbanizacion->plano_archivo_original;
+        $oldCommercialImage = $urbanizacion->publicSetting?->hero_image;
         $data = $this->validated($request, $urbanizacion);
         $storedPlan = $data['_stored_plan'] ?? null;
         unset($data['_stored_plan']);
-
         try {
-            $urbanizacion->update($data);
+            $commercialImage = $this->storeCommercialImage($request);
         } catch (\Throwable $exception) {
             $this->deleteStoredPlan($storedPlan);
             throw $exception;
         }
 
+        try {
+            DB::transaction(function () use ($data, $request, $urbanizacion, $commercialImage): void {
+                $urbanizacion->update($data);
+                if ($commercialImage || $request->boolean('remove_commercial_image')) {
+                    $setting = $urbanizacion->publicSetting()->firstOrNew();
+                    $setting->hero_image = $commercialImage;
+                    $urbanizacion->publicSetting()->save($setting);
+                }
+            });
+        } catch (\Throwable $exception) {
+            $this->deleteStoredPlan($storedPlan);
+            $this->deleteCommercialImage($commercialImage);
+            throw $exception;
+        }
+
         if ($storedPlan && ($oldImage || $oldOriginal)) {
             app(PlanImageService::class)->delete($oldImage, $oldOriginal);
+        }
+        if ($oldCommercialImage && ($commercialImage || $request->boolean('remove_commercial_image'))) {
+            $this->deleteCommercialImage($oldCommercialImage);
         }
 
         return redirect()->route('urbanizaciones.index')->with('status', $this->successMessage($storedPlan));
@@ -83,6 +117,8 @@ class UrbanizacionController extends Controller
             'propietario' => ['nullable', 'string', 'max:255'],
             'ubicacion' => ['nullable', 'string', 'max:255'],
             'descripcion' => ['nullable', 'string'],
+            'commercial_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'remove_commercial_image' => ['nullable', 'boolean'],
             'plano_imagen' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:15360'],
             'superficie_total' => ['nullable', 'numeric', 'min:0'],
             'estado' => ['required', 'in:activa,pausada,cerrada'],
@@ -90,6 +126,7 @@ class UrbanizacionController extends Controller
         ]);
 
         $data['mostrar_precio_publico'] = $request->boolean('mostrar_precio_publico');
+        unset($data['commercial_image'], $data['remove_commercial_image']);
 
         if ($request->hasFile('plano_imagen')) {
             $planImageService = app(PlanImageService::class);
@@ -120,6 +157,42 @@ class UrbanizacionController extends Controller
         if ($storedPlan) {
             app(PlanImageService::class)->delete($storedPlan['plano_imagen'] ?? null, $storedPlan['plano_archivo_original'] ?? null);
         }
+    }
+
+    private function storeCommercialImage(Request $request): ?string
+    {
+        if (! $request->hasFile('commercial_image')) {
+            return null;
+        }
+
+        try {
+            return app(ManagedImageService::class)->storeOptimized(
+                $request->file('commercial_image'),
+                'urbanizaciones/comerciales',
+                ['max_width' => 1920, 'max_height' => 1080, 'quality' => 84]
+            )['path'];
+        } catch (\RuntimeException $exception) {
+            throw ValidationException::withMessages([
+                'commercial_image' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function deleteCommercialImage(?string $path): void
+    {
+        $path = ltrim((string) $path, '/');
+        if ($path === '') {
+            return;
+        }
+
+        $directory = str_starts_with($path, 'urbanizaciones/comerciales/')
+            ? 'urbanizaciones/comerciales'
+            : dirname($path);
+        if (! str_starts_with($directory, 'urbanizaciones/') || str_contains($directory, '..')) {
+            return;
+        }
+
+        app(ManagedImageService::class)->delete($path, $directory);
     }
 
     private function successMessage(?array $storedPlan): string

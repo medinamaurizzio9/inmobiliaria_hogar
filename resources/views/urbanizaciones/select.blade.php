@@ -12,10 +12,10 @@
 <div class="project-grid grid-urbanizaciones">
     @forelse($urbanizaciones as $urbanizacion)
         <article class="project-card">
-            @if($urbanizacion->imageUrl(true))
-                <img src="{{ $urbanizacion->imageUrl(true) }}" alt="Plano {{ $urbanizacion->nombre }}" loading="lazy" decoding="async">
+            @if($urbanizacion->publicSetting?->heroUrl())
+                <img src="{{ $urbanizacion->publicSetting->heroUrl() }}" alt="Portada de {{ $urbanizacion->nombre }}" loading="lazy" decoding="async">
             @else
-                <div class="project-placeholder">Sin plano cargado</div>
+                <div class="project-placeholder">Sin portada comercial</div>
             @endif
             <div class="project-body">
                 <h2>{{ $urbanizacion->nombre }}</h2>

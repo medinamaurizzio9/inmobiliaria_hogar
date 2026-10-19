@@ -55,9 +55,14 @@ Route::get('/u/{slug}', [PublicDisponibilidadController::class, 'showBySlug'])->
 Route::get('/recibos/verificar/{numero}', PublicReceiptVerificationController::class)->name('recibos.verificar');
 Route::get('/noticias/{slug}', [PublicPortalController::class, 'noticia'])->name('public.noticias.show');
 Route::post('/contacto', [PublicLeadController::class, 'store'])->middleware('throttle:5,1')->name('public.contacto.store');
+Route::get('/nosotros', [PublicPortalController::class, 'about'])->name('public.about');
+Route::get('/urbanizaciones-publicas', [PublicPortalController::class, 'urbanizations'])->name('public.urbanizations');
+Route::get('/testimonios', [PublicPortalController::class, 'testimonials'])->name('public.testimonials');
+Route::get('/preguntas-frecuentes', [PublicPortalController::class, 'faq'])->name('public.faq');
+Route::get('/contacto', [PublicPortalController::class, 'contact'])->name('public.contact');
 
 Route::middleware('guest')->group(function (): void {
-    Route::get('/', [AuthController::class, 'showLogin']);
+    Route::get('/', [AuthController::class, 'showLogin'])->name('public.home');
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.store');
 });

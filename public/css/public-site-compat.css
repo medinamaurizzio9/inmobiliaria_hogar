@@ -1,0 +1,26 @@
+.public-article-placeholder { display: grid; place-items: center; min-height: 280px; margin: 26px 0; color: #34783b; border-radius: 18px; background: #f8f6ef; font-size: 44px; }
+.hogar-public .brand-logo-fallback { color: #123f25; border-color: #d8d0be; background: #f8f6ef; box-shadow: none; }
+.hogar-public .brand-logo-fallback--public-header { width: 54px; height: 54px; max-width: 54px; max-height: 54px; }
+.hogar-public .site-header { min-height: 120px; padding-block: 10px; }
+.hogar-public .site-logo { min-width: 0; }
+.hogar-public .site-logo .brand-logo { width: auto !important; max-width: 240px !important; height: 92px !important; max-height: 92px !important; object-fit: contain; object-position: left center; }
+.hogar-public .site-logo .brand-logo-frame { max-width: 240px; }
+.hogar-public .site-logo .brand-logo-name { color: #123f25; font-size: 17px; line-height: 1.15; }
+.hogar-public .brand-logo-fallback--footer { color: #fff; border-color: rgba(255,255,255,.24); background: rgba(255,255,255,.08); }
+.hogar-public .brand-logo-fallback--login { color: #123f25; border-color: #d8d0be; background: #f8f6ef; }
+.hogar-public .site-section { width: min(100%, 1400px); margin-inline: auto; }
+.hogar-public .site-section.soft { width: min(calc(100% - 32px), 1360px); border-radius: 24px; }
+.hogar-public .site-project-grid:has(> :only-child) { grid-template-columns: minmax(0, 390px); }
+.hogar-public .client-project-image > span { display: grid; width: 100%; height: 100%; place-items: center; color: #34783b; background: linear-gradient(135deg,#f8f6ef,#e7ecdf); font-size: 36px; }
+.hogar-public .site-hero { min-height: 620px; padding-top: 68px; padding-bottom: 105px; }
+.hogar-public .site-hero h1 { max-width: 760px; font-size: clamp(48px,5.4vw,76px); }
+.hogar-public .site-cta.has-image { padding: 0; gap: 0; }
+.hogar-public .site-cta-image { align-self: stretch; width: min(34%, 390px); min-height: 250px; object-fit: cover; }
+.hogar-public .site-cta.has-image > div:not(.site-cta-actions) { flex: 1; padding: 38px clamp(26px,4vw,52px); }
+.hogar-public .site-cta.has-image .site-cta-actions { padding-right: clamp(26px,4vw,52px); }
+@media (max-width: 1100px) { .hogar-public .site-header { grid-template-columns: minmax(0,1fr) auto; gap: 10px; min-height: 84px; padding: 8px 16px; } .hogar-public .site-logo .brand-logo { max-width: 175px !important; height: 60px !important; max-height: 60px !important; } .hogar-public .site-logo .brand-logo-frame { max-width: 190px; } .hogar-public .site-nav { position: absolute; top: 84px; right: 12px; left: 12px; display: none; padding: 12px; border: 1px solid rgba(18,63,37,.12); border-radius: 13px; background: #fff; box-shadow: var(--site-shadow); } .hogar-public .site-nav.open { display: grid; } .hogar-public .site-nav a { min-height: 44px; padding: 13px; } .hogar-public .site-nav a::after { display: none; } .hogar-public .site-header-actions { justify-content: flex-end; } .hogar-public .site-whatsapp { display: none; } .hogar-public .portal-menu-toggle { display: grid; place-items: center; width: 44px; height: 44px; } }
+@media (max-width: 850px) { .hogar-public .brand-logo-fallback--public-header { width: 48px; height: 48px; max-width: 48px; max-height: 48px; } }
+@media (max-width: 850px) { .hogar-public .site-hero { min-height: 570px; padding-top: 64px; padding-bottom: 105px; } }
+@media (max-width: 850px) { .hogar-public .site-cta.has-image { flex-direction: column; } .hogar-public .site-cta-image { width: 100%; height: 220px; min-height: 0; } .hogar-public .site-cta.has-image .site-cta-actions { padding: 0 26px 32px; } }
+@media (max-width: 560px) { .hogar-public .site-section.soft { width: calc(100% - 20px); } .hogar-public .site-hero { min-height: 540px; padding-top: 52px; padding-bottom: 92px; background: linear-gradient(rgba(248,246,239,.86),rgba(248,246,239,.86)),var(--hero-image,linear-gradient(135deg,#f8f6ef,#dfe8dc)) center/cover no-repeat; } .hogar-public .site-hero h1 { font-size: clamp(38px,10.8vw,45px); } }
+@media (max-width: 560px) { .hogar-public .site-logo .brand-logo { max-width: 160px !important; height: 60px !important; max-height: 60px !important; } .hogar-public .site-logo .brand-logo-frame { max-width: 170px; } .hogar-public .site-logo .brand-logo-name { max-width: 102px; font-size: 13px; } }

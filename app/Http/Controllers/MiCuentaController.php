@@ -20,7 +20,7 @@ class MiCuentaController extends Controller
     public function index(Request $request, PaymentAlertService $alerts, SystemSettingsService $settings): View
     {
         $cliente = $this->cliente($request);
-        $cliente->load(['ventas' => fn ($query) => $query->where('estado', '!=', 'anulada')->with('lote.manzano.urbanizacion', 'cuotas', 'cashMovements')]);
+        $cliente->load(['ventas' => fn ($query) => $query->where('estado', '!=', 'anulada')->with('lote.manzano.urbanizacion.publicSetting', 'cuotas', 'cashMovements')]);
         $urbanizaciones = $this->activeUrbanizations();
         $pendientes = $cliente->cashMovements()->where('estado', 'pendiente_verificacion')->count();
         $whatsappPhone = $settings->get('whatsapp') ?: $settings->get('celular');
@@ -110,7 +110,7 @@ class MiCuentaController extends Controller
 
     private function activeUrbanizations()
     {
-        return Urbanizacion::query()->where('estado', 'activa')->withLotStats()->orderBy('nombre')->get();
+        return Urbanizacion::query()->where('estado', 'activa')->with('publicSetting')->withLotStats()->orderBy('nombre')->get();
     }
 
     private function own(Request $request, Venta $venta): void

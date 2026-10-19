@@ -1,0 +1,2 @@
+@props(['items'])
+<div class="site-faq" data-faq>@foreach($items as $index => $item)<article><h3><button type="button" aria-expanded="{{ $index === 0 ? 'true' : 'false' }}" aria-controls="faq-panel-{{ $index }}" data-faq-button><span>{{ $item['question'] }}</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button></h3><div id="faq-panel-{{ $index }}" @if($index !== 0) hidden @endif data-faq-panel><p>{{ $item['answer'] }}</p></div></article>@endforeach</div>

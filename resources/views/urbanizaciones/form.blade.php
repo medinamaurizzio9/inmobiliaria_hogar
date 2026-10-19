@@ -11,9 +11,22 @@
     <div class="field"><label>Estado</label><select name="estado">@foreach(['activa','pausada','cerrada'] as $estado)<option @selected(old('estado', $urbanizacion->estado ?? 'activa') === $estado)>{{ $estado }}</option>@endforeach</select></div>
     <label class="check-row"><input type="checkbox" name="mostrar_precio_publico" value="1" @checked(old('mostrar_precio_publico', $urbanizacion->mostrar_precio_publico ?? true))> Mostrar precio en disponibilidad publica</label>
     <div class="field full">
+        <h2>Imagen comercial</h2>
+        <p class="muted">Portada fotográfica de esta urbanización para las tarjetas de «Nuestros proyectos» y su página pública. JPG, PNG o WebP de hasta 8 MB.</p>
+        <label>Fotografía o portada</label>
+        <input type="file" name="commercial_image" accept="image/jpeg,image/png,image/webp">
+    </div>
+    @if($urbanizacion->publicSetting?->heroUrl())
+        <div class="field full">
+            <img class="public-hero-preview" src="{{ $urbanizacion->publicSetting->heroUrl() }}" alt="Portada comercial de {{ $urbanizacion->nombre }}">
+            <label class="check-row"><input type="checkbox" name="remove_commercial_image" value="1"> Quitar portada comercial actual</label>
+        </div>
+    @endif
+    <div class="field full">
+        <h2>Plano técnico</h2>
         <label>Plano de la urbanizacion</label>
         <input type="file" name="plano_imagen" accept="application/pdf,image/jpeg,image/png,image/webp">
-        <p class="muted">Para mejor calidad, suba el plano en PDF o imagen de alta resolución. Los raster mayores de 2 MB se optimizan sin cambiar sus dimensiones.</p>
+        <p class="muted">Se utiliza únicamente en el visor de lotes, manzanos y disponibilidad. Nunca se mostrará como portada comercial. Los raster mayores de 2 MB se optimizan sin cambiar sus dimensiones.</p>
     </div>
     @if($urbanizacion->imageUrl())
         <div class="field full">

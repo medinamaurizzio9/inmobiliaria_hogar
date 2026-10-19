@@ -104,7 +104,7 @@ class NewsModuleTest extends TestCase
         Storage::fake('public');
         $noticia = $this->news('Imagen inexistente', true, now()->subMinute(), false, 'noticias/no-existe.webp');
 
-        $this->get('/')->assertOk()->assertSee($noticia->titulo)->assertSee('portal-news-placeholder')->assertDontSee('no-existe.webp');
+        $this->get('/')->assertOk()->assertSee($noticia->titulo)->assertSee('news-placeholder')->assertDontSee('no-existe.webp');
         $this->get(route('public.noticias.show', $noticia->slug))->assertOk()->assertSee('public-article-placeholder')->assertDontSee('no-existe.webp');
     }
 

@@ -47,13 +47,15 @@ class SystemSettingController extends Controller
             'logo_main' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'logo_login' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'login_background' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
+            'landing_hero_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
             'logo_pdf' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'remove_images' => ['nullable', 'array'],
-            'remove_images.*' => ['string', 'in:logo_main,logo_login,login_background,logo_pdf'],
+            'remove_images.*' => ['string', 'in:logo_main,logo_login,login_background,landing_hero_image,logo_pdf'],
         ]);
 
         $removeImages = array_values(array_unique($data['remove_images'] ?? []));
         unset($data['remove_images']);
+        $before = $settings->all();
 
         foreach (['logo_main', 'logo_login', 'logo_pdf'] as $logoKey) {
             if ($request->hasFile($logoKey)) {
@@ -61,8 +63,6 @@ class SystemSettingController extends Controller
                 $data[$logoKey] = $images->replaceOptimized($oldPath, $request->file($logoKey), 'logos', ['max_width' => 800, 'max_height' => 800, 'quality' => 85])['path'];
             }
         }
-
-        $before = $settings->all();
 
         foreach ($removeImages as $key) {
             $data[$key] = null;
@@ -73,9 +73,33 @@ class SystemSettingController extends Controller
             $data['login_background'] = $images->replaceOptimized($oldBackground, $request->file('login_background'), 'login-backgrounds', ['max_width' => 1920, 'max_height' => 1920, 'quality' => 82])['path'];
         }
 
-        $settings->setMany($data);
+        $newLandingHero = null;
+        if ($request->hasFile('landing_hero_image')) {
+            $newLandingHero = $images->storeOptimized($request->file('landing_hero_image'), 'landing-heroes', [
+                'max_width' => 1920,
+                'max_height' => 900,
+                'quality' => 86,
+            ])['path'];
+            $data['landing_hero_image'] = $newLandingHero;
+        }
+
+        try {
+            $settings->setMany($data);
+        } catch (\Throwable $exception) {
+            if ($newLandingHero) {
+                $images->delete($newLandingHero, 'landing-heroes');
+            }
+            throw $exception;
+        }
+
+        if ($newLandingHero || in_array('landing_hero_image', $removeImages, true)) {
+            $images->delete($settings->normalizedPublicPath($before['landing_hero_image'] ?? null), 'landing-heroes');
+        }
 
         foreach ($removeImages as $key) {
+            if ($key === 'landing_hero_image') {
+                continue;
+            }
             $oldPath = $settings->normalizedPublicPath($before[$key] ?? null);
             if ($oldPath !== null && ! str_contains($oldPath, '..')) {
                 Storage::disk('public')->delete($oldPath);
